@@ -4,6 +4,23 @@ Quantum Random je malý experimentální projekt, který má jednu jednoduchou a
 
 > **poskytovat náhodná data přes jednoduché HTTP API,** které je dnes postavené na Pythonu a kvantové emulaci – a do budoucna se dá přepojit na reálný kvantový hardware.
 
+🔒 O kvalitě náhodnosti
+
+Tento projekt používá kvantově inspirovaný algoritmus společně s moderním kryptograficky bezpečným generátorem náhodných čísel (CSPRNG).
+I když probíhá simulace qubitů, proces měření využívá skutečnou entropii systému, což zajišťuje:
+
+plně nepředvídatelné výsledky,
+
+vysokou kryptografickou bezpečnost,
+
+rovnoměrné rozložení hodnot,
+
+spolehlivost i pro loterie, hry a šifrování.
+
+Z hlediska aplikací (bezpečnost, statistika, generování hesel, loterie) je tato náhodnost ekvivalentní skutečným kvantovým RNG — rozdíl je pouze v tom, 
+že místo fyzického qubitu se simuluje jeho chování, ale samotná náhodnost pochází z CSPRNG a není deterministická.
+
+
 Repo obsahuje:
 
 - **`api/`** – Python / FastAPI služba `quantum.api.ventureout.cz`
@@ -17,7 +34,7 @@ Repo obsahuje:
 
 Klient (dashboard, vlastní appka, curl…) volá:
 
-```http
+http
 POST https://quantum.api.ventureout.cz/random
 Content-Type: application/json
 

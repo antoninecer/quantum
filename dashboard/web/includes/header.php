@@ -16,6 +16,7 @@
     <div class="nav-right">
         <a href="/index.php">Home</a>
         <a href="/dashboard.php">Generator</a>
+        <a href="/dnd.php">DnD dice</a>
         <a href="/about.php">About</a>
         <a href="https://quantum.api.ventureout.cz/docs" target="_blank">API Docs</a>
         <!-- <a href="/login.php">Login</a> -->

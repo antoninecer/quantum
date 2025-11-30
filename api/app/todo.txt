@@ -1,0 +1,69 @@
+[ ] 1. LOGGING – rozšířit a vyčistit
+    [ ] Logovat JSON AND response
+    [ ] Přidat user-agent
+    [ ] Přidat GeoIP lookup (country, city)
+    [ ] Upravit formát logů → jednotný JSON log
+    [ ] Zavést rotate: 2 MB nebo monthly, keep=6
+    [ ] Interní dashboard: live log viewer (tail)
+
+[ ] 2. SECURITY / RATE LIMIT
+    [ ] API keys – jednoduchá verze (header: X-API-Key)
+    [ ] Limitace per IP (rate limit)
+    [ ] Limitace per API key
+    [ ] Blokovat podezřelé IP / blacklist
+    [ ] Statistiky: top IP, top API keys
+
+[ ] 3. PERFORMANCE / INFRA
+    [ ] Uvicorn + Gunicorn místo single uvicorn
+    [ ] Systemd service reload: restart on failure
+    [ ] Healthcheck endpoint /health
+    [ ] Statistika využití (kolik requestů za minutu)
+    [ ] Zálohovat logy do /var/log/quantum-api/archive/
+
+[ ] 4. DICE ENDPOINT (DnD)
+    [ ] Vytvořit parser: "3d6 + 2d4 + 1d20"
+    [ ] Vytvořit nový endpoint /dice
+    [ ] Odpověď má obsahovat detailní výpis hodů
+    [ ] Podpora advantage / disadvantage ("1d20 A", "1d20 D")
+    [ ] Integrovat do dashboardu jako "DnD Dice Roller"
+
+[ ] 5. DASHBOARD (web UI)
+    [ ] Web UI na /dashboard (chráněné API key nebo heslem)
+    [ ] Šablony:
+          - EuroJackpot
+          - Sportka
+          - DnD kostky
+          - Náhodné znaky / strings
+          - Náhodné číslo X–Y
+    [ ] Output: JSON + pěkný formatted view
+    [ ] Historie posledních 50 requestů
+    [ ] Export jako CSV/JSON
+
+[ ] 6. GEOIP / METADATA
+    [ ] Instalace geoip2 or ipinfo API
+    [ ] Logovat: country, region, city, lat/lon
+    [ ] Dashboard: mapa requestů (později)
+
+[ ] 7. API DOCUMENTATION
+    [ ] Přidat OpenAPI popisy pro nové endpointy
+    [ ] Přidat příklady k /random
+    [ ] Přidat příklady k /dice
+    [ ] Vytvořit rychlou dokumentaci na /docs/public
+
+[ ] 8. MONITORING
+    [ ] Prometheus endpoint (/metrics)
+    [ ] Grafana dashboard (později)
+    [ ] Ping /health v monitoring stacku
+
+[ ] 9. IBM REAL QPU (volitelné)
+    [ ] Přepnout backend z simulátoru → real QPU
+    [ ] Jen pro : /quantum-bit endpoint
+    [ ] Nastavit timeout a frontu
+    [ ] Logovat job_id
+
+[ ] 10. MISC
+    [ ] Přidat version: GET /version
+    [ ] Přidat systémovou identitu (hostname, uptime)
+    [ ] Testy: pytest (unit tests for parser)
+    [ ] Makefile: test + deploy + restart
+

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# FastAPI/UVicorn logy
+/var/log/quantum-api/
+/logs/
+
+# PHP / web cache
+*.log
+cache/
+vendor/
+
+# OS
+.DS_Store
+Thumbs.db
+

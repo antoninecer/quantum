@@ -1,0 +1,31 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List, Optional
+
+from request_parser import process_request
+
+app = FastAPI(title="Quantum Random API")
+
+class RandomConfig(BaseModel):
+    type: str
+    range: Optional[List[int]] = None
+    alphabet: Optional[str] = None
+    count: int
+    unique: bool = False
+
+class RandomTask(BaseModel):
+    random: RandomConfig
+
+class RequestModel(BaseModel):
+    request: List[RandomTask]
+
+@app.post("/random")
+def generate_random(data: RequestModel):
+    req_list = [{"random": task.random.dict()} for task in data.request]
+    result = process_request(req_list)
+    return {"result": result}
+
+@app.get("/")
+def root():
+    return {"message": "Quantum Random API running"}
+

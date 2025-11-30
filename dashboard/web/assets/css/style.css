@@ -1,0 +1,310 @@
+/* ----------------------------------------------------------
+   GLOBAL
+----------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Inter", Arial, sans-serif;
+    background: #f7f8fa;
+    color: #222;
+}
+
+a {
+    color: #0366d6;
+}
+
+/* ----------------------------------------------------------
+   NAVBAR
+----------------------------------------------------------- */
+
+.navbar {
+    background: #ffffff;
+    border-bottom: 1px solid #e4e6eb;
+    padding: 12px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nav-left .logo {
+    font-size: 22px;
+    font-weight: 600;
+    color: #222;
+    text-decoration: none;
+}
+
+.nav-right a {
+    margin-left: 22px;
+    color: #0366d6;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.nav-right a:hover {
+    text-decoration: underline;
+}
+
+/* ----------------------------------------------------------
+   CONTENT WRAPPER
+----------------------------------------------------------- */
+
+.content {
+    max-width: 900px;
+    margin: 40px auto;
+    background: #ffffff;
+    padding: 35px 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.05);
+}
+
+/* ----------------------------------------------------------
+   TITLES & TEXT
+----------------------------------------------------------- */
+
+h1 {
+    font-size: 28px;
+    color: #1a1a1a;
+    margin-bottom: 18px;
+}
+
+h2 {
+    font-size: 22px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #1f2933;
+}
+
+h3 {
+    font-size: 18px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    color: #1f2933;
+}
+
+p {
+    line-height: 1.6;
+    margin: 0 0 12px 0;
+    color: #343a40;
+}
+
+.intro {
+    color: #444;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+ul {
+    margin-top: 0;
+    margin-bottom: 12px;
+    padding-left: 20px;
+}
+
+/* ----------------------------------------------------------
+   HOMEPAGE BUTTONS
+----------------------------------------------------------- */
+
+.home-buttons {
+    margin-top: 25px;
+}
+
+.home-buttons a {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    margin-right: 15px;
+}
+
+.btn-primary {
+    background: #0366d6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #024ea8;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #222;
+}
+
+.btn-secondary:hover {
+    background: #cfd8e3;
+}
+
+/* ----------------------------------------------------------
+   GENERATOR BOX (dashboard)
+----------------------------------------------------------- */
+
+.gen-box {
+    background: #f0f3f7;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    border: 1px solid #d6d9df;
+}
+
+.gen-box label {
+    font-weight: 500;
+}
+
+.gen-box select,
+.gen-box input {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #b8bcc3;
+    margin-right: 10px;
+    font-size: 15px;
+    max-width: 100%;
+}
+
+/* tlačítko „Send Request“ */
+button.generate {
+    background: #0366d6;
+    color: white;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+button.generate:hover {
+    background: #024ea8;
+}
+
+/* preset buttons (Sportka, Eurojackpot…) */
+.preset-buttons {
+    margin-bottom: 18px;
+}
+
+.preset-buttons button {
+    border: 1px solid #cbd2e1;
+    background: #e9edf5;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 8px;
+    margin-bottom: 6px;
+}
+
+.preset-buttons button:hover {
+    background: #dde3f1;
+}
+
+/* ----------------------------------------------------------
+   CODE / RESULTS (dashboard + docs)
+----------------------------------------------------------- */
+
+/* hlavní boxy s JSON / ukázkami */
+.result-box {
+    background: #272822;
+    color: #adff2f;
+    padding: 15px;
+    border-radius: 6px;
+    font-family: "Courier New", monospace;
+    margin-top: 20px;
+    white-space: pre;       /* zachová formátování */
+    overflow-x: auto;       /* na mobilu lze posunout URL/JSON do strany */
+}
+
+/* obecně všechny <pre> v dokumentaci */
+pre {
+    background: #272822;
+    color: #adff2f;
+    padding: 15px;
+    border-radius: 6px;
+    font-family: "Courier New", monospace;
+    white-space: pre;
+    overflow-x: auto;       /* horizontální scroll místo useknutí */
+    margin-top: 12px;
+    margin-bottom: 16px;
+}
+
+/* inline kód v textu */
+code {
+    font-family: "Courier New", monospace;
+    font-size: 0.95em;
+    background: #edf2ff;
+    padding: 2px 4px;
+    border-radius: 3px;
+    word-break: break-all;  /* kdyby se objevila dlouhá URL v <code> */
+}
+
+/* ----------------------------------------------------------
+   FOOTER
+----------------------------------------------------------- */
+
+footer {
+    text-align: center;
+    padding: 25px;
+    margin-top: 40px;
+    color: #777;
+    font-size: 13px;
+}
+
+/* ----------------------------------------------------------
+   RESPONSIVE (MOBILE)
+----------------------------------------------------------- */
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 10px 14px;
+    }
+
+    .nav-right a {
+        margin-left: 14px;
+        font-size: 14px;
+    }
+
+    .content {
+        margin: 20px 10px;
+        padding: 20px 16px;
+        border-radius: 8px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .gen-box {
+        padding: 16px;
+    }
+
+    .gen-box select,
+    .gen-box input {
+        width: 100%;
+        margin: 4px 0 10px 0;
+    }
+
+    button.generate {
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .preset-buttons button {
+        width: 100%;
+        text-align: left;
+    }
+
+    .result-box,
+    pre {
+        font-size: 13px;
+    }
+}
+

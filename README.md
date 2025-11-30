@@ -299,4 +299,48 @@ php -S 127.0.0.1:8080
 
 Dashboard poběží na http://127.0.0.1:8080/ a bude volat API podle nastavené URL (v produkci https://quantum.api.ventureout.cz, lokálně možno přepnout na http://127.0.0.1:8000).
 
+## Python závislosti (API)
 
+API běží v samostatném virtuálním prostředí (venv) v adresáři:
+/opt/quantum/api/venv
+
+Obnovení prostředí na jiném stroji:
+
+cd /opt/quantum/api
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
+
+*** Service quantum-api.service ***
+
+cat /etc/systemd/system/quantum-api.service
+[Unit]
+Description=Quantum Random API
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/quantum-api/app
+ExecStart=/opt/quantum-api/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+
+***
+
+Aktivace služby
+# načtení nové jednotky
+systemctl daemon-reload
+
+# spuštění služby
+systemctl start quantum-api.service
+
+# zapnutí po rebootu
+systemctl enable quantum-api.service
+
+# kontrola stavu
+systemctl status quantum-api.service

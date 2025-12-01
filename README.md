@@ -1,50 +1,214 @@
 # Quantum Random API & Dashboard
 
-Quantum Random je malý experimentální projekt, který má jednu jednoduchou ambici:
-
-> **poskytovat náhodná data přes jednoduché HTTP API,** které je dnes postavené na Pythonu a kvantové emulaci – a do budoucna se dá přepojit na reálný kvantový hardware.
-
-🔒 O kvalitě náhodnosti
-
-Tento projekt používá kvantově inspirovaný algoritmus společně s moderním kryptograficky bezpečným generátorem náhodných čísel (CSPRNG).
-I když probíhá simulace qubitů, proces měření využívá skutečnou entropii systému, což zajišťuje:
-
-plně nepředvídatelné výsledky,
-
-vysokou kryptografickou bezpečnost,
-
-rovnoměrné rozložení hodnot,
-
-spolehlivost i pro loterie, hry a šifrování.
-
-Z hlediska aplikací (bezpečnost, statistika, generování hesel, loterie) je tato náhodnost ekvivalentní skutečným kvantovým RNG — rozdíl je pouze v tom, 
-že místo fyzického qubitu se simuluje jeho chování, ale samotná náhodnost pochází z CSPRNG a není deterministická.
-
-
-Repo obsahuje:
-
-- **`api/`** – Python / FastAPI služba `quantum.api.ventureout.cz`
-- **`dashboard/`** – PHP dashboard `dashboard.api.ventureout.cz`, který API jen „obaluje“ do webového UI
+> Malý experimentální projekt, který poskytuje kvalitní kryptografickou náhodu přes jednoduché HTTP API.  
+> Náhodnost je „kvantově inspirovaná“ a backend je navržený tak, aby šel v budoucnu přepojit na reálný kvantový hardware.
 
 ---
 
-## Jak to funguje (high-level)
+## Obsah
 
-### 1. Klient → HTTP JSON request
+- [Cíle projektu](#cíle-projektu)
+- [Architektura](#architektura)
+  - [API (`api/`)](#api-api)
+  - [Dashboard (`dashboard/`)](#dashboard-dashboard)
+  - [DnD Dice stránka (`dnd.php`)](#dnd-dice-stránka-dndphp)
+- [Jak funguje API](#jak-funguje-api)
+  - [Struktura requestu](#struktura-requestu)
+  - [Příklady použití](#příklady-použití)
+- [Lokální vývoj](#lokální-vývoj)
+  - [API – FastAPI / Uvicorn](#api--fastapi--uvicorn)
+  - [Dashboard – PHP](#dashboard--php)
+- [Provoz / Nginx / systemd](#provoz--nginx--systemd)
+  - [Nginx](#nginx)
+  - [Systemd služba `quantum-api.service`](#systemd-služba-quantum-apiservice)
+- [Bezpečnost, logování a TODO](#bezpečnost-logování-a-todo)
 
-Klient (dashboard, vlastní appka, curl…) volá:
+---
 
-http
-POST https://quantum.api.ventureout.cz/random
-Content-Type: application/json
+## Cíle projektu
 
-Pošle JSON:
+Quantum Random má jednu jednoduchou ambici:
 
+- poskytovat **kryptograficky bezpečnou náhodu** přes **HTTP JSON API**,
+- mít **čisté, stabilní API**, které neřeší, odkud náhodu bereme,
+- umožnit **snadné přepojení backendu** z emulace na reálný kvantový hardware,
+- nabídnout **pohodlné webové UI** pro běžné scénáře: loterie, hesla, DnD kostky atd.
+
+Náhodnost je generovaná kombinací:
+
+- moderního **CSPRNG** a entropie OS,
+- **kvantově inspirovaného algoritmu / emulace qubitů** pro generování bitových sekvencí.
+
+Z hlediska aplikací (bezpečnost, statistika, generování hesel, loterie, hry) je tato náhodnost
+ekvivalentní reálným kvantovým RNG – rozdíl je v tom, že místo fyzického qubitu se simuluje jeho chování.
+
+---
+
+## Architektura
+
+Repozitář je rozdělený na dvě hlavní části:
+
+- `api/` – Python / FastAPI služba (např. `https://quantum.api.ventureout.cz`)
+- `dashboard/` – PHP dashboard (např. `https://dashboard.api.ventureout.cz`), který API jen „obaluje“ do webového UI
+
+### API (`api/`)
+
+**Technologie**
+
+- Jazyk: **Python 3.x**
+- Framework: **FastAPI**
+- Server: **uvicorn** (za Nginx reverse proxy)
+
+**Struktura (zjednodušeně)**
+
+- `main.py` – FastAPI aplikace, endpointy:
+  - `POST /random` – hlavní endpoint pro generování náhodných hodnot
+  - `GET /health` – healthcheck
+  - `GET /version` – verze API / build info
+- `request_parser.py` – parsování, validace a transformace požadavku
+- `quantum_random.py` – generování náhodných dat
+- `requirements.txt` – Python závislosti
+- `todo.txt` – poznámky k logování, rate-limitům, API klíčům apod.
+
+**Backend pro náhodu**
+
+Aktuálně:
+
+- využívá entropii OS / kryptografických knihoven (CSPRNG),
+- nad tím staví kvantovou emulaci (simulace qubitů, generování bitů),
+- rozhraní je navržené tak, aby se dal backend vyměnit za:
+  - IBM Quantum, IonQ, Quantinuum, …
+  - případně mix více zdrojů (hardware + fallback emulace).
+
+Cíl: **API rozhraní se nemění**, měnit se může pouze interní „zdroj náhody“.
+
+---
+
+### Dashboard (`dashboard/`)
+
+Dashboard je tenký **PHP layer** nad API. Sám žádná náhodná data negeneruje – vše jde přes `POST /random`.
+
+**Technologie**
+
+- Nginx + **PHP-FPM 8.3**
+- Jednoduchý responzivní frontend (HTML/CSS/JS)
+
+**Struktura (hlavní soubory)**
+
+- `web/index.php` – úvodní stránka, dokumentace a vysvětlení API
+- `web/dashboard.php` – UI pro generování náhodných hodnot (Sportka, Eurojackpot, Dice, Password…)
+- `web/dnd.php` – **DnD Dice** stránka (viz níže)
+- `web/includes/header.php`, `web/includes/footer.php` – společné menu / layout
+- `web/assets/css/style.css` – vzhled (cards, layout, responzivita)
+- `web/assets/js/app.js` – logika pro hlavní dashboard:
+  - presety (Sportka, Eurojackpot, Dice, Password),
+  - stav UI,
+  - skládání JSON payloadu pro `/random`,
+  - zobrazení JSON requestu/response + ukázka cURL.
+- `web/assets/js/dnd.js` – JS logika pro DnD kostky (DnD Dice, viz níže)
+
+---
+
+### DnD Dice stránka (`dnd.php`)
+
+Soubor: `dashboard/web/dnd.php`  
+URL (typicky): `https://dashboard.api.ventureout.cz/dnd.php`
+
+Stránka DnD Dice umožňuje:
+
+- házet **d4, d6, d8, d10, d12, d20, d100** pomocí kvantové náhody,
+- zvolit typ hodu (attack, saving throw, skill check, damage, custom),
+- nastavit **počet kostek**, **režim** (Normal / Advantage / Disadvantage) a **modifikátor**,
+- přehledně zobrazit:
+  - jednotlivé kostky,
+  - celkový součet,
+  - použitý modifikátor,
+- zobrazit **debug JSON request/response**,
+- přepínat **nápovědu v češtině a angličtině**.
+
+#### UI – hlavní prvky
+
+1. **Typ hodu (`rollType`)**
+   - `Attack roll` – útok
+   - `Saving throw` – záchranný hod
+   - `Skill / ability check`
+   - `Damage roll`
+   - `Custom` – ruční nastavení
+
+   Typ hodu pouze **předvyplní** výchozí kostku a počet. Uživatel může vždy vše ručně přepsat.
+
+2. **Kostka a počet kostek**
+
+   - `diceType` – výběr kostky: d4, d6, d8, d10, d12, d20, d100
+   - `diceCount` – počet kostek (1–20)
+
+3. **Režim (advantage/disadvantage)**
+
+   - `Normal` – klasický hod
+   - `Advantage` – hod 2×, vezmi vyšší
+   - `Disadvantage` – hod 2×, vezmi nižší
+
+   Nejčastěji pro d20 útoky a záchranné hody, technicky však funguje i pro jiné kostky.
+
+4. **Modifikátor (`modifier`)**
+
+   - celé číslo (kladné i záporné),
+   - např. `+5` k útoku, `+3` ke záchrannému hodu, `-1` postih.
+
+5. **Výstup**
+
+   - shrnutí posledního hodu (včetně typu),
+   - jednotlivé kostky v přehledné řadě,
+   - celkový součet včetně modifikátoru,
+   - možnost otevřít **debug** sekci a zobrazit surový JSON request/response z API.
+
+#### JSON požadavky pro DnD
+
+Stránka `dnd.php` používá JavaScript (`assets/js/dnd.js`), který skládá payload pro `/random`.
+
+Obecně:
+
+- typ je vždy `int` (kostka → celé číslo),
+- `range` je `[1, N]`, kde `N` je velikost kostky (4, 6, 8, 10, 12, 20, 100),
+- `count` odpovídá celkovému počtu hodů:
+  - normální hod: `count = diceCount`,
+  - advantage/disadvantage: typicky 2× d20 pro daný typ hodu, ale s ohledem na UI (logiku přesně definuje `dnd.js`).
+
+Příklad jednoduchého hodu 1× d20:
+
+```json
 {
   "request": [
     {
       "random": {
         "type": "int",
+        "count": 1,
+        "unique": false,
+        "range": [1, 20],
+        "alphabet": null
+      }
+    }
+  ]
+}
+Debug sekce na stránce zobrazí jak tento request, tak i response z API.
+
+Jak funguje API
+Struktura requestu
+Endpoint:
+
+http
+Copy code
+POST https://quantum.api.ventureout.cz/random
+Content-Type: application/json
+Payload:
+
+json
+Copy code
+{
+  "request": [
+    {
+      "random": {
+        "type": "int" | "char",
         "count": 5,
         "unique": true,
         "range": [1, 50],
@@ -53,123 +217,51 @@ Pošle JSON:
     }
   ]
 }
+Parametry
 
+type
 
-type – "int" nebo "char"
+"int" – generování celých čísel,
 
-count – kolik hodnot vygenerovat
+"char" – generování znaků z definované množiny.
 
-unique – má smysl hlavně pro int (např. loterie)
+count – kolik hodnot vygenerovat.
 
-range – [min, max] pro int
+unique
 
-alphabet – množina znaků pro char (hesla, tokeny)
+u int – zda mají být hodnoty v rámci jednoho tasku unikátní (např. pro loterie),
 
-2. request_parser.py
+u char většinou false (hesla, tokeny).
 
-FastAPI endpoint v main.py vezme body a předá ho do:
+range
 
-request_parser.process_request(request_list)
+[min, max] pro type: "int",
 
-V tomhle kroku:
+pro type: "char" null.
 
-se zkontroluje struktura,
+alphabet
 
-připraví se interní reprezentace požadavků,
+pro type: "char" – množina znaků,
 
-pro každý „task“ se zavolá generátor náhodných dat.
+pro type: "int" null.
 
-3. quantum_random.py – generátor náhodných dat
+Odpověď:
 
-Jádro generování je v Pythonu v souboru quantum_random.py.
-
-Aktuální stav:
-
-používá kombinaci Python knihoven a kvantové emulace, tj.:
-
-kvalitní entropy zdroj z OS / kryptografických knihoven,
-
-kvantový simulátor (emulátor) jako backend pro generování bitových sekvencí,
-
-reálný hardware zatím není připojený – rozhraní je ale navržené tak, aby šlo později backend vyměnit za:
-
-IBM Quantum, IonQ, Quantinuum nebo jiného providera,
-
-případně mix více zdrojů (hardware + fallback emulace).
-
-Cíl: udržet čisté API, které neřeší, jak náhodu získáme – back-end se může změnit, rozhraní zůstane.
-
-4. Odpověď
-
-Výsledek vypadá např.:
-
+json
+Copy code
 {
   "result": [
     [12, 5, 37, 48, 9]
   ]
 }
+result je pole výsledků pro jednotlivé tasky uvnitř request.
 
+každý task vrací jedno vnořené pole.
 
-result je pole výsledků pro jednotlivé tasky ve request.
-
-pro Eurojackpot (5/50 + 2/12) přijdou dvě vnořená pole: prvních 5 čísel, pak 2 čísla z 1–12.
-
-Technologie / stack
-API (api/app)
-
-Jazyk: Python 3.x
-
-Framework: FastAPI
-
-Server: uvicorn (za Nginx reverse proxy)
-
-Struktura:
-
-main.py – FastAPI app, endpoint /random, /health, /version
-
-request_parser.py – validace a transformace requestu
-
-quantum_random.py – generování náhodných dat (kombinace knihoven + kvantová emulace)
-
-todo.txt – poznámky k logování, rate-limitům, API keyům apod.
-
-Seznam konkrétních Python závislostí je / bude v api/requirements.txt.
-
-Dashboard (dashboard/web)
-
-Dashboard je tenký PHP layer nad API:
-
-Server: Nginx + PHP-FPM 8.3
-
-Hlavní soubory:
-
-index.php – „dokumentace“ a vysvětlení API
-
-dashboard.php – UI pro generování náhodných hodnot
-
-includes/header.php / footer.php – společné menu / layout
-
-assets/css/style.css – card design + responzivita (desktop/mobil)
-
-assets/js/app.js – JS logika:
-
-stav presetů (Sportka, Eurojackpot, Dice, Password),
-
-skládání JSON payloadu,
-
-volání https://quantum.api.ventureout.cz/random,
-
-zobrazení JSON requestu, response a cURL,
-
-u hesel navíc vynucení: min. jedno malé, jedno velké, číslice a speciální znak (!?@#$%*+-).
-
-Dashboard sám žádná data negeneruje, jen vizuálně řídí API.
-
-Příklad – presety v dashboardu
-Sportka (6/49)
-
-Dashboard nastaví:
-
+Příklady použití
+1) Sportka (6/49)
+json
+Copy code
 {
   "request": [
     {
@@ -183,11 +275,11 @@ Dashboard nastaví:
     }
   ]
 }
+2) Eurojackpot (5/50 + 2/12)
+Dva tasky v jednom requestu:
 
-Eurojackpot (5/50 + 2/12)
-
-Tady jde o dva tasky v jednom requestu:
-
+json
+Copy code
 {
   "request": [
     {
@@ -210,11 +302,19 @@ Tady jde o dva tasky v jednom requestu:
     }
   ]
 }
+Odpověď bude mít tvar:
 
-Password (16 znaků)
-
-Dashboard pošle:
-
+json
+Copy code
+{
+  "result": [
+    [12, 5, 37, 48, 9],
+    [3, 11]
+  ]
+}
+3) Heslo (16 znaků)
+json
+Copy code
 {
   "request": [
     {
@@ -228,110 +328,85 @@ Dashboard pošle:
     }
   ]
 }
+JS v dashboardu navíc kontroluje, zda heslo obsahuje:
 
+alespoň 1 malé písmeno,
 
-JS po obdržení výsledků navíc zkontroluje, že v hesle je:
+alespoň 1 velké písmeno,
 
-aspoň 1 malé písmeno,
+alespoň 1 číslici,
 
-aspoň 1 velké písmeno,
+alespoň 1 speciální znak z množiny !?@#$%*+-.
 
-aspoň 1 číslice,
+Pokud ne, náhodně přepíše některé pozice tak, aby podmínky byly splněny.
 
-aspoň 1 speciální znak z výše uvedené množiny;
+Lokální vývoj
+Pozn.: Konkrétní cesty a verze se mohou lišit podle prostředí.
 
-pokud ne, přepíše náhodné pozice tak, aby podmínka platila.
-
-Nginx / provoz
-
-Konfigurace, které se verziují v repu (pro přehled):
-
-etc/nginx/sites-enabled/dashboard.api.ventureout.cz
-etc/nginx/sites-enabled/quantum.api.ventureout.cz
-
-
-Dashboard – statický obsah + PHP z /opt/quantum/dashboard/web
-
-API – reverse proxy na 127.0.0.1:8000 (uvicorn s FastAPI)
-
-Certifikáty spravuje Let’s Encrypt (Certbot).
-
-Stav implementace (zjednodušený TODO)
-Hotovo
-
-✅ API endpoint POST /random + základní struktura request/response
-
-✅ Python backend s oddělením:
-
-parsování požadavku (request_parser.py)
-
-generování náhodných dat (quantum_random.py)
-
-✅ Dashboard s presety (Sportka, Eurojackpot, Dice, Password)
-
-✅ Hesla s vynucenou kombinací malá/velká/číslice/speciál
-
-✅ Responzivní layout dashboardu (desktop + mobil, žádné „uřezané“ kódy v <pre>)
-
-Nehotovo / v plánu
-
-⭕ Reálný kvantový hardware
-
-zatím kvantová část běží na emulaci / knihovnách, ne na skutečném QPU
-
-⭕ API keys / rate-limit / kvóty
-
-zatím není vynucený X-API-Key
-
-rate-limit je jen v náčrtu (todo.txt), ne plně nasazený
-
-⭕ Login do dashboardu
-
-dashboard je teď veřejný, bez autentizace
-
-⭕ Lepší logování a monitoring
-
-JSON logy, logrotate, statistiky per IP / per key / per typ požadavku
-
-Lokální vývoj (krátce)
-
-Pozn.: tohle je spíš nástřel, přesná konfigurace se může lišit podle konkrétního serveru.
-
-API
+API – FastAPI / Uvicorn
+bash
+Copy code
 cd api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+Spuštění:
 
-# spuštění
+bash
+Copy code
 uvicorn app.main:app --reload --port 8000
+API poběží na http://127.0.0.1:8000.
 
-
-API pak bude na http://127.0.0.1:8000.
-
-Dashboard
+Dashboard – PHP
+bash
+Copy code
 cd dashboard/web
 php -S 127.0.0.1:8080
+Dashboard poběží na http://127.0.0.1:8080/.
+URL API lze v konfiguraci přepnout dle potřeby:
 
+produkce: https://quantum.api.ventureout.cz,
 
-Dashboard poběží na http://127.0.0.1:8080/ a bude volat API podle nastavené URL (v produkci https://quantum.api.ventureout.cz, lokálně možno přepnout na http://127.0.0.1:8000).
+lokálně: http://127.0.0.1:8000.
 
-## Python závislosti (API)
+Obnovení Python prostředí na jiném stroji
+Příklad pro produkční instalaci v /opt/quantum/api:
 
-API běží v samostatném virtuálním prostředí (venv) v adresáři:
-/opt/quantum/api/venv
-
-Obnovení prostředí na jiném stroji:
-
+bash
+Copy code
 cd /opt/quantum/api
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
+Provoz / Nginx / systemd
+Nginx
+V repozitáři jsou verziované relevantní konfigurace pro přehled:
 
-*** Service quantum-api.service ***
+etc/nginx/sites-enabled/dashboard.api.ventureout.cz
 
-cat /etc/systemd/system/quantum-api.service
+etc/nginx/sites-enabled/quantum.api.ventureout.cz
+
+Typické nastavení:
+
+Dashboard
+
+statický obsah + PHP z /opt/quantum/dashboard/web
+
+index.php, dashboard.php, dnd.php atd.
+
+API
+
+reverse proxy na 127.0.0.1:8000 (uvicorn / FastAPI)
+
+Certifikáty spravuje Let’s Encrypt (Certbot).
+
+Systemd služba quantum-api.service
+Příklad jednotky:
+
+ini
+Copy code
+# /etc/systemd/system/quantum-api.service
 [Unit]
 Description=Quantum Random API
 After=network.target
@@ -346,18 +421,83 @@ Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
-
-***
-
 Aktivace služby
-# načtení nové jednotky
+
+Načtení nové jednotky:
+
+bash
+Copy code
 systemctl daemon-reload
+Spuštění služby:
 
-# spuštění služby
+bash
+Copy code
 systemctl start quantum-api.service
+Zapnutí po rebootu:
 
-# zapnutí po rebootu
+bash
+Copy code
 systemctl enable quantum-api.service
+Kontrola stavu:
 
-# kontrola stavu
+bash
+Copy code
 systemctl status quantum-api.service
+Bezpečnost, logování a TODO
+Stav implementace (shrnutí):
+
+Hotovo
+✅ API endpoint POST /random + základní struktura request/response
+
+✅ Oddělení logiky:
+
+parsování (request_parser.py),
+
+generování dat (quantum_random.py)
+
+✅ Dashboard s presety:
+
+Sportka, Eurojackpot, Dice, Password
+
+✅ Hesla:
+
+vynucená kombinace malá/velká/číslice/speciál
+
+✅ Responzivní layout (desktop + mobil)
+
+✅ Stránka DnD Dice (dnd.php):
+
+konfigurace hodu (typ, kostka, počet, režim, modifikátor),
+
+přehledné zobrazení výsledků,
+
+debug JSON request/response,
+
+nápověda v CZ/EN.
+
+V plánu / TODO
+⭕ Reálný kvantový hardware
+
+přepojení backendu na skutečný kvantový procesor (IBM Quantum, IonQ, …)
+
+možnost kombinovat více zdrojů náhody (hardware + fallback emulace).
+
+⭕ API keys / rate-limit / kvóty
+
+vynucený X-API-Key pro přístup k API,
+
+rate-limiting, kvóty per key / per IP.
+
+⭕ Autentizace dashboardu
+
+login pro přístup k produkčnímu dashboardu.
+
+⭕ Lepší logování a monitoring
+
+JSON logy, logrotate,
+
+základní statistiky per IP / per API klíč / per typ požadavku,
+
+health & metrics endpointy pro monitoring.
+
+

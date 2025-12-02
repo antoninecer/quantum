@@ -1,5 +1,5 @@
 # Quantum Random API & Dashboard
-
+.
 > Malý experimentální projekt, který poskytuje kvalitní kryptografickou náhodu přes jednoduché HTTP API.  
 > Náhodnost je „kvantově inspirovaná“ a backend je navržený tak, aby šel v budoucnu přepojit na reálný kvantový hardware.
 

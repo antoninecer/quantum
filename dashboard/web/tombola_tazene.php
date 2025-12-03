@@ -48,7 +48,7 @@ if ($code !== '') {
                     Akce:
                     <strong><?= htmlspecialchars($event['name']) ?></strong><br>
                     Lístky <?= (int)$event['ticket_from'] ?>–<?= (int)$event['ticket_to'] ?><br>
-                    Kód akce: <code><?= htmlspecialchars($code) ?></code>
+                    Kód akce: <?= htmlspecialchars($code) ?>
                 </p>
 
                 <?php if ($draws): ?>

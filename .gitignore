@@ -20,3 +20,6 @@ vendor/
 .DS_Store
 Thumbs.db
 
+# adresar rum pro odpad pri programovani
+rum/
+

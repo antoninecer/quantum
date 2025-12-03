@@ -4,6 +4,8 @@
 include __DIR__ . '/includes/header.php';
 include __DIR__ . '/includes/tombola_lib.php';
 
+$refreshSeconds = 30; // interval automatického obnovení v sekundách
+
 $code  = trim($_GET['code'] ?? '');
 $event = null;
 $draws = [];
@@ -30,11 +32,18 @@ if ($code !== '') {
         $draws = $stmt->fetchAll();
     }
 }
+
+// čas načtení stránky
+$loadedAt = date('d.m.Y H:i:s');
 ?>
 
 <main class="page page-dnd">
     <section class="tombola-history">
         <h1>Výsledky tomboly</h1>
+        <p style="margin-top:0.25rem; opacity:0.9;">
+            Aktualizace: <?= htmlspecialchars($loadedAt) ?>
+            (auto refresh každých <?= (int)$refreshSeconds ?> s)
+        </p>
 
         <div class="card">
             <?php if ($code === ''): ?>
@@ -48,7 +57,6 @@ if ($code !== '') {
                     Akce:
                     <strong><?= htmlspecialchars($event['name']) ?></strong><br>
                     Lístky <?= (int)$event['ticket_from'] ?>–<?= (int)$event['ticket_to'] ?><br>
-                    
                 </p>
 
                 <?php if ($draws): ?>
@@ -77,6 +85,13 @@ if ($code !== '') {
         </div>
     </section>
 </main>
+
+<script>
+// automatické obnovení výsledkovky každých N sekund
+setInterval(function () {
+    window.location.reload();
+}, <?= (int)$refreshSeconds * 1000 ?>); // ms
+</script>
 
 <?php
 include __DIR__ . '/includes/footer.php';

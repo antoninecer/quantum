@@ -532,9 +532,17 @@ if ($currentEventId) {
         <?php if (!empty($currentEvent['public_code'])): ?>
             <p style="margin-top:0.5rem;">
                 Veřejný odkaz na výsledky pro hosty:<br>
-                <a href="/tombola_tazene.php?code=<?= htmlspecialchars($currentEvent['public_code']) ?>" target="_blank">
-                    /tombola_tazene.php?code=<?= htmlspecialchars($currentEvent['public_code']) ?>
-                </a>
+
+                <?php
+                // detekce schematu (http/https)
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                // host včetně portu (pokud je nestandardní)
+                $host = $_SERVER['HTTP_HOST']; // typicky dashboard.api.ventureout.cz
+                // konkrétní cesta
+                $path = '/tombola_tazene.php?code='.htmlspecialchars($currentEvent['public_code']);
+                $url = $scheme . '://' . $host . $path;
+                ?>
+                <a href="<?php echo $url; ?>" target="_blank"><?php echo $url; ?></a>
             </p>
         <?php endif; ?>
         <div class="card">

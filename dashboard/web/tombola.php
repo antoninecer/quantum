@@ -328,8 +328,8 @@ if ($currentEventId) {
                         <label for="prize_mode_list">Seznam cen (copy &amp; paste)</label>
                         <textarea name="prize_list" rows="4" placeholder="Každá cena na nový řádek&#10;Tričko XL|3&#10;Hrnek Quantum|5"></textarea>
                         <p class="hint">
-                            Formát: <code>Název</code> nebo <code>Název|množství</code>.
-                            Např. <code>Tričko XL|3</code> = 3 kusy stejné ceny.
+                            Formát: Název nebo Název|množství.
+                            Např. Tričko XL|3 = 3 kusy stejné ceny.
                         </p>
                     </div>
                 </div>

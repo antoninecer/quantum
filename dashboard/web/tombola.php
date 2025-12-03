@@ -529,7 +529,14 @@ if ($currentEventId) {
     </section>
     <section class="tombola-history">
         <h2>Přehled losování vybrané akce</h2>
-
+        <?php if (!empty($currentEvent['public_code'])): ?>
+            <p style="margin-top:0.5rem;">
+                Veřejný odkaz na výsledky pro hosty:<br>
+                <a href="/tombola_tazene.php?code=<?= htmlspecialchars($currentEvent['public_code']) ?>" target="_blank">
+                    /tombola_tazene.php?code=<?= htmlspecialchars($currentEvent['public_code']) ?>
+                </a>
+            </p>
+        <?php endif; ?>
         <div class="card">
             <?php if ($currentEvent): ?>
                 <p>

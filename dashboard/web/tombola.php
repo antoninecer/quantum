@@ -10,8 +10,19 @@ $user = current_user();
 /**
  * Načte akce a ceny pro selecty
  */
-$events = $pdo->query('SELECT * FROM tombola_events ORDER BY created_at DESC')->fetchAll();
-
+if ($user && is_admin()) {
+    // admin vidí všechny akce
+    $stmt   = $pdo->query('SELECT * FROM tombola_events ORDER BY created_at DESC');
+    $events = $stmt->fetchAll();
+} elseif ($user) {
+    // běžný uživatel vidí jen svoje akce
+    $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE user_id = ? ORDER BY created_at DESC');
+    $stmt->execute([$user['id']]);
+    $events = $stmt->fetchAll();
+} else {
+    // pro jistotu – nepřihlášený nic
+    $events = [];
+}
 $currentEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 $currentPrizeId = isset($_GET['prize_id']) ? (int)$_GET['prize_id'] : null;
 
@@ -42,8 +53,16 @@ if ($action !== '') {
         } else {
             $pdo->beginTransaction();
             try {
-                $stmt = $pdo->prepare('INSERT INTO tombola_events (name, ticket_from, ticket_to) VALUES (?, ?, ?)');
-                $stmt->execute([$name, $ticketFrom, $ticketTo]);
+                // vlastník akce = aktuálně přihlášený uživatel (nebo NULL, kdyby náhodou)
+                $ownerId = $user['id'] ?? null;
+                // jednoduchý veřejný kód (pozdeji se bude hodit pro public URL)
+                $publicCode = bin2hex(random_bytes(8));
+
+                $stmt = $pdo->prepare(
+                    'INSERT INTO tombola_events (name, ticket_from, ticket_to, user_id, public_code)
+                     VALUES (?, ?, ?, ?, ?)'
+                );
+                $stmt->execute([$name, $ticketFrom, $ticketTo, $ownerId, $publicCode]);
                 $eventId = (int)$pdo->lastInsertId();
 
                 $prizeRows = [];
@@ -226,9 +245,20 @@ if ($action !== '') {
 
 // pokud máme vybranou akci z GET, načti její ceny + poslední los
 if ($currentEventId) {
-    $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
-    $stmt->execute([$currentEventId]);
-    $currentEvent = $stmt->fetch();
+    if ($user && is_admin()) {
+        // admin může otevřít jakoukoliv akci
+        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
+        $stmt->execute([$currentEventId]);
+    } elseif ($user) {
+        // běžný uživatel jen svoje akce
+        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ? AND user_id = ?');
+        $stmt->execute([$currentEventId, $user['id']]);
+    } else {
+        $stmt = null;
+    }
+
+    $currentEvent = $stmt ? $stmt->fetch() : null;
+
 
     if ($currentEvent) {
         $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE event_id = ? ORDER BY sort_order ASC, id ASC');

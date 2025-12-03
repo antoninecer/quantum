@@ -530,7 +530,6 @@ if ($currentEventId) {
     <section class="tombola-history">
         <h2>Přehled losování vybrané akce</h2>
         <div class="card">
-            </div>
             <?php if ($currentEvent): ?>
                 <p>
                     Akce: <strong><?= htmlspecialchars($currentEvent['name']) ?></strong><br>

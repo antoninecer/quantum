@@ -4,6 +4,9 @@
 include __DIR__ . '/includes/header.php';
 include __DIR__ . '/includes/tombola_lib.php';
 
+// nastavíme časové pásmo na Evropu/Prahu
+date_default_timezone_set('Europe/Prague');
+
 $refreshSeconds = 30; // interval automatického obnovení v sekundách
 
 $code  = trim($_GET['code'] ?? '');

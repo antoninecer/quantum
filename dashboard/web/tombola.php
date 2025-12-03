@@ -157,6 +157,67 @@ if ($action !== '') {
             $error = 'Vyber akci a cenu, pro kterou chceš losovat.';
         }
     }
+    if ($action === 'redraw_draw') {
+        $drawId = (int)($request['draw_id'] ?? 0);
+
+        if ($drawId > 0) {
+            // vytáhneme původní los
+            $stmt = $pdo->prepare('SELECT * FROM tombola_draws WHERE id = ?');
+            $stmt->execute([$drawId]);
+            $draw = $stmt->fetch();
+
+            if ($draw) {
+                $currentEventId = (int)$draw['event_id'];
+                $currentPrizeId = (int)$draw['prize_id'];
+
+                // označíme tenhle los jako "no_show", pokud byl valid
+                if ($draw['status'] === 'valid') {
+                    $stmt = $pdo->prepare('UPDATE tombola_draws SET status = "no_show" WHERE id = ?');
+                    $stmt->execute([$drawId]);
+                }
+
+            // dál už je to stejná logika jako v tvé větvi "redraw":
+            // 1) načíst event a prize
+            $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
+            $stmt->execute([$currentEventId]);
+            $currentEvent = $stmt->fetch();
+
+            $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ? AND event_id = ?');
+            $stmt->execute([$currentPrizeId, $currentEventId]);
+            $currentPrize = $stmt->fetch();
+
+            if ($currentEvent && $currentPrize) {
+                // zkontrolovat, jestli ještě zbývá kusů
+                $wins = count_valid_wins($pdo, $currentPrizeId);
+                if ($wins >= (int)$currentPrize['quantity_total']) {
+                    $error = 'Pro tuto cenu už jsou rozdané všechny kusy.';
+                } else {
+                    // vylosovat nový lístek
+                    $ticket = draw_unique_ticket($pdo, $currentEvent, $QUANTUM_API_URL);
+                    if ($ticket === null) {
+                        $error = 'Došly volné lístky v rozsahu akce.';
+                    } else {
+                        $stmt = $pdo->prepare(
+                            'INSERT INTO tombola_draws (event_id, prize_id, ticket_number, status)
+                             VALUES (?, ?, ?, "valid")'
+                        );
+                        $stmt->execute([$currentEventId, $currentPrizeId, $ticket]);
+
+                        $lastDraw = [
+                            'ticket_number' => $ticket,
+                            'prize_name'    => $currentPrize['name'],
+                            'event_name'    => $currentEvent['name'],
+                            'status'        => 'valid',
+                        ];
+
+                        $message = 'Přelosování úspěšné, nový lístek: ' . $ticket;
+                    }
+                }
+            }
+        }
+    }
+}
+
 }
 
 // pokud máme vybranou akci z GET, načti její ceny + poslední los
@@ -174,6 +235,10 @@ if ($currentEventId) {
         $stmt->execute([$currentEventId]);
         $prizes = $stmt->fetchAll();
 
+        $stmt = $pdo->prepare('SELECT d.*, p.name AS prize_name FROM tombola_draws d JOIN tombola_prizes p ON p.id = d.prize_id WHERE d.event_id = ? ORDER BY d.created_at DESC' );
+        $stmt->execute([$currentEventId]);
+        $draws = $stmt->fetchAll();
+        
         // >>> DOPLNIT – aby fungovala podmínka if ($currentPrize) <<<
         if ($currentPrizeId) {
             foreach ($prizes as $pr) {
@@ -425,6 +490,60 @@ if ($currentEventId) {
 
             <?php else: ?>
                 <p>Vyber nebo vytvoř akci vlevo a teprve potom můžeš losovat.</p>
+            <?php endif; ?>
+        </div>
+    </section>
+    <section class="tombola-history">
+        <h2>Přehled losování vybrané akce</h2>
+
+        <div class="card">
+            <?php if ($currentEvent): ?>
+                <p>
+                    Akce: <strong><?= htmlspecialchars($currentEvent['name']) ?></strong><br>
+                    Lístky <?= (int)$currentEvent['ticket_from'] ?>–<?= (int)$currentEvent['ticket_to'] ?>
+                </p>
+
+                <?php if (!empty($draws)): ?>
+                    <table class="tombola-table">
+                        <thead>
+                        <tr>
+                            <th>Čas</th>
+                            <th>Lístek</th>
+                            <th>Cena</th>
+                            <th>Stav</th>
+                            <th>Akce</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($draws as $d): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($d['created_at']) ?></td>
+                                <td><?= (int)$d['ticket_number'] ?></td>
+                                <td><?= htmlspecialchars($d['prize_name']) ?></td>
+                                <td><?= htmlspecialchars($d['status']) ?></td>
+                                <td>
+                                    <?php if ($d['status'] === 'valid'): ?>
+                                        <form method="post" style="display:inline">
+                                            <input type="hidden" name="action" value="redraw_draw">
+                                            <input type="hidden" name="draw_id" value="<?= (int)$d['id'] ?>">
+                                            <button type="submit" class="btn-secondary btn-small">
+                                                Přelosovat
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="badge badge-muted">neplatný / no_show</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p>Pro tuto akci zatím neproběhlo žádné losování.</p>
+                <?php endif; ?>
+
+            <?php else: ?>
+                <p>Vyber nejdřív akci nahoře, pak se tady zobrazí přehled losů.</p>
             <?php endif; ?>
         </div>
     </section>

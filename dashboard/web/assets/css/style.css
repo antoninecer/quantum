@@ -785,3 +785,11 @@ footer {
     color: #f9fafb;
     margin-bottom: 1rem;
 }
+
+/* Admin poznámka pod nadpisem */
+.admin-users .admin-note {
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    color: #e5e7eb;            /* světle šedá, dobře čitelná */
+    opacity: 0.9;
+}

@@ -528,7 +528,9 @@ if ($currentEventId) {
         </div>
     </section>
     <section class="tombola-history">
+        <h2>Přehled losování vybrané akce</h2>
         <div class="card">
+            </div>
             <?php if ($currentEvent): ?>
                 <p>
                     Akce: <strong><?= htmlspecialchars($currentEvent['name']) ?></strong><br>
@@ -578,7 +580,6 @@ if ($currentEventId) {
                 <p>Vyber nejdřív akci nahoře, pak se tady zobrazí přehled losů.</p>
             <?php endif; ?>
         </div>
-         <h2>Přehled losování vybrané akce</h2>
         <?php if (!empty($currentEvent['public_code'])): ?>
             <p style="margin-top:0.5rem;">
                 Veřejný odkaz na výsledky pro hosty:<br>

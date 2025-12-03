@@ -616,7 +616,25 @@ if ($currentEventId) {
 
     </section>
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn       = document.getElementById('show-qr-btn');
+    if (!btn) return;
 
+    var url       = btn.getAttribute('data-url');
+    var container = document.getElementById('qr-container');
+    var img       = document.getElementById('qr-image');
+
+    btn.addEventListener('click', function () {
+        if (!img.getAttribute('src')) {
+            var qrApi = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='
+                        + encodeURIComponent(url);
+            img.setAttribute('src', qrApi);
+        }
+        container.style.display = 'block';
+    });
+});
+</script>
 <?php
 include __DIR__ . '/includes/footer.php';
 ?>

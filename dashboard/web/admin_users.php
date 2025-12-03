@@ -56,7 +56,7 @@ $users = $stmt->fetchAll();
 ?>
 
 <main class="page page-dnd">
-    <section class="dnd-layout">
+    <section class="dnd-layout admin-users">
         <div class="dnd-column">
             <h1>Správa uživatelů</h1>
             <p>Jen pro adminy – zde můžeš přidávat nové loginy pro tombolu a další části dashboardu.</p>

@@ -118,4 +118,10 @@ function count_valid_wins(PDO $pdo, $prizeId)
     $stmt->execute([$prizeId]);
     return (int)$stmt->fetchColumn();
 }
+
+
+
+
+
+
 ?>

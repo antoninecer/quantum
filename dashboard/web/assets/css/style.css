@@ -740,3 +740,21 @@ footer {
     color: #9ca3af;
     font-size: 0.75rem;
 }
+
+/* Tombola – nadpisy a texty v přehledu losování */
+
+.page-dnd h2,
+.page-dnd h3 {
+    color: #f9fafb !important;
+}
+
+.tombola-history h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+    color: #f9fafb !important;
+}
+
+.tombola-history p {
+    color: #e5e7eb;
+}

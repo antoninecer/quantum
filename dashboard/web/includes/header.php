@@ -1,3 +1,8 @@
+<?php
+include_once __DIR__ . '/auth.php';
+$user = current_user();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,9 +24,27 @@
         <a href="/dnd.php">DnD dice</a>
         <a href="/about.php">About</a>
         <a href="https://quantum.api.ventureout.cz/docs" target="_blank">API Docs</a>
-        <!-- <a href="/login.php">Login</a> -->
+
+        <?php if ($user): ?>
+            <!-- přihlášený uživatel -->
+            <a href="/tombola.php">Tombola</a>
+
+            <?php if ($user['role'] === 'admin'): ?>
+                <a href="/admin_users.php">Admin</a>
+            <?php endif; ?>
+
+            <span class="nav-user">
+                <?= htmlspecialchars($user['username']) ?>
+                (<a href="/logout.php">Logout</a>)
+            </span>
+        <?php else: ?>
+            <!-- nepřihlášený -->
+            <a href="/login.php">Login</a>
+        <?php endif; ?>
     </div>
 </div>
+
+<div class="content">
 
 <div class="content">
 

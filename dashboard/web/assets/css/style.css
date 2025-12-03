@@ -758,3 +758,12 @@ footer {
 .tombola-history p {
     color: #e5e7eb;
 }
+
+.nav-user {
+    margin-left: 1rem;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+.nav-user a {
+    text-decoration: underline;
+}

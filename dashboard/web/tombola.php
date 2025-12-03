@@ -1,7 +1,11 @@
 <?php
-// dashboard/web/tombola.php
-include __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/auth.php';
+require_login(); // nepřihlášený → dashboard.php
+
 include __DIR__ . '/includes/tombola_lib.php';
+include __DIR__ . '/includes/header.php';
+
+$user = current_user();
 
 /**
  * Načte akce a ceny pro selecty

@@ -793,3 +793,8 @@ footer {
     color: #e5e7eb;            /* světle šedá, dobře čitelná */
     opacity: 0.9;
 }
+
+/* Světlé nadpisy na tmavých DnD / tombola stránkách */
+.page-dnd h1 {
+    color: #f9fafb;
+}

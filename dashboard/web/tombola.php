@@ -541,8 +541,14 @@ if ($currentEventId) {
                 // konkrétní cesta
                 $path = '/tombola_tazene.php?code='.htmlspecialchars($currentEvent['public_code']);
                 $url = $scheme . '://' . $host . $path;
+                // URL pro QR kód – jednoduché externí API
+                $qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' . urlencode($url);
                 ?>
                 <a href="<?php echo $url; ?>" target="_blank"><?php echo $url; ?></a>
+                <div style="margin-top:1rem;">
+                    <strong>QR kód pro hosty:</strong><br>
+                    <img src="<?php echo $qrImg; ?>" alt="QR kód na výsledky tomboly">
+                </div>
             </p>
         <?php endif; ?>
         <div class="card">

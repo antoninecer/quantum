@@ -36,6 +36,10 @@ function nav_is_active(string $file, string $current): bool {
                class="nav-link<?= nav_is_active('dnd.php', $current) ? ' active' : '' ?>">
                 DnD dice
             </a>
+            <a href="/cards32.php"
+               class="nav-link<?= nav_is_active('cards32.php', $current) ? ' active' : '' ?>">
+                DnD 32Cards
+            </a>
             <a href="/about.php"
                class="nav-link<?= nav_is_active('about.php', $current) ? ' active' : '' ?>">
                 About

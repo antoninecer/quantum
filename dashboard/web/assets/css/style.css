@@ -883,3 +883,42 @@ footer {
 .page-dnd h1 {
     color: #c4dd88;
 }
+
+/* 32 karet – mřížka sejmutých karet */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 sloupce */
+    gap: 0.35rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.cards-grid-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cards-grid-index {
+    opacity: 0.7;
+    margin-right: 0.5rem;
+}
+
+.cards-grid-value {
+    font-weight: 500;
+}
+
+/* Na mobilu raději 2 sloupce */
+@media (max-width: 768px) {
+    .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Disabled tlačítka – lehce vybledlá a neklikací */
+.btn-primary[disabled],
+.btn-secondary[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}

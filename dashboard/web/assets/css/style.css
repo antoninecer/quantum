@@ -390,6 +390,18 @@ footer {
     color: #f9fafb;
 }
 
+/* Obecný text na tmavém pozadí (DnD / Tombola / Admin) */
+.page-dnd p {
+    color: #e5e7eb;      /* světle šedá, čitelná na #111827 */
+    font-size: 0.95rem;
+}
+
+/* Speciálně uvnitř panelů (pravý sloupec Losování, apod.) */
+.dnd-panel p {
+    color: #e5e7eb;
+    opacity: 0.95;
+}
+
 .dnd-hero {
     max-width: 1100px;
     margin: 0 auto 2.5rem;

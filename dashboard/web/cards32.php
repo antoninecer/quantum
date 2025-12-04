@@ -1,230 +1,174 @@
 <?php
 // dashboard/web/cards32.php
-//
-// Demo: 32karetní balíček (7–A ve 4 barvách) + rozdání pro prší (2–4 hráči)
-// používá Quantum Random API na zamíchání balíčku.
+
+session_start();
 
 include __DIR__ . '/includes/header.php';
 
-// URL Quantum API
-const QUANTUM_API_URL = 'https://quantum.api.ventureout.cz/random';
-
-// kolik karet do ruky pro prší
-const CARDS_PER_PLAYER = 4;
-
-// připravíme proměnné pro výsledky a chyby
-$error   = null;
-$info    = [];
-$result  = null;
-
-// definice 32 karet – 7,8,9,10,J,Q,K,A ve 4 barvách
-$deck = [
-    '7♣','8♣','9♣','10♣','J♣','Q♣','K♣','A♣',  // kříže
-    '7♦','8♦','9♦','10♦','J♦','Q♦','K♦','A♦',  // káry
-    '7♥','8♥','9♥','10♥','J♥','Q♥','K♥','A♥',  // srdce
-    '7♠','8♠','9♠','10♠','J♠','Q♠','K♠','A♠',  // piky
+// --- definice 32 karet (prší / mariáš)
+// pořadí je jedno, stejně se bude míchat
+$cards32 = [
+    '7♣', '8♣', '9♣', '10♣', 'J♣', 'Q♣', 'K♣', 'A♣',
+    '7♦', '8♦', '9♦', '10♦', 'J♦', 'Q♦', 'K♦', 'A♦',
+    '7♥', '8♥', '9♥', '10♥', 'J♥', 'Q♥', 'K♥', 'A♥',
+    '7♠', '8♠', '9♠', '10♠', 'J♠', 'Q♠', 'K♠', 'A♠',
 ];
 
-$playerCount = 3; // default
+/**
+ * Inicializace nového balíčku do session.
+ */
+function cards32_init_deck(array $cards32): void
+{
+    $deck = $cards32;
+    shuffle($deck);
+
+    $_SESSION['cards32_deck'] = $deck;
+    $_SESSION['cards32_pos']  = 0;   // kolik karet už bylo „sejmuto“
+}
+
+/**
+ * Získá aktuální balíček z session; pokud neexistuje, vytvoří nový.
+ */
+function cards32_get_deck(array $cards32): array
+{
+    if (!isset($_SESSION['cards32_deck'], $_SESSION['cards32_pos'])) {
+        cards32_init_deck($cards32);
+    }
+
+    return $_SESSION['cards32_deck'];
+}
+
+/**
+ * Vrátí počet již sebraných karet.
+ */
+function cards32_get_pos(): int
+{
+    return isset($_SESSION['cards32_pos']) ? (int)$_SESSION['cards32_pos'] : 0;
+}
+
+/**
+ * Sejme vrchní kartu – posune pozici o 1, pokud ještě nějaké karty zbývají.
+ */
+function cards32_draw_card(array $deck): ?string
+{
+    $pos = cards32_get_pos();
+    $count = count($deck);
+
+    if ($pos >= $count) {
+        // balík je dobraný
+        return null;
+    }
+
+    $card = $deck[$pos];
+    $_SESSION['cards32_pos'] = $pos + 1;
+
+    return $card;
+}
+
+// --- zpracování POST akcí -----------------------------------------------
+
+$deck = cards32_get_deck($cards32);
+$lastDrawnCard = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $playerCount = (int)($_POST['players'] ?? 3);
-
-    // validace počtu hráčů
-    if ($playerCount < 2 || $playerCount > 4) {
-        $error = 'Počet hráčů musí být mezi 2 a 4.';
-    } else {
-        // kolik karet celkem potřebujeme pro rozdání + jednu na stůl
-        $needed = $playerCount * CARDS_PER_PLAYER + 1;
-        if ($needed > count($deck)) {
-            $error = 'Pro zadaný počet hráčů a karet do ruky není dost karet v balíčku.';
-        }
+    // nový balík
+    if (isset($_POST['shuffle_deck'])) {
+        cards32_init_deck($cards32);
+        $deck = cards32_get_deck($cards32);
     }
 
-    if ($error === null) {
-        // připravíme payload pro Quantum API – permutace 0..31
-        $payload = [
-            'request' => [
-                [
-                    'random' => [
-                        'type'     => 'int',
-                        'count'    => count($deck),
-                        'unique'   => true,
-                        'range'    => [0, count($deck) - 1],
-                        'alphabet' => null,
-                    ],
-                ],
-            ],
-        ];
-
-        $ch = curl_init(QUANTUM_API_URL);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_POSTFIELDS     => json_encode($payload),
-            CURLOPT_TIMEOUT        => 5,
-        ]);
-
-        $resp = curl_exec($ch);
-        $curlErr = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE) ?: 0;
-        curl_close($ch);
-
-        if ($resp === false) {
-            $error = 'Chyba při volání Quantum API: ' . ($curlErr ?: 'neznámá chyba');
-        } elseif ($httpCode >= 400) {
-            $error = 'Quantum API vrátilo HTTP ' . $httpCode . '.';
-        } else {
-            $data = json_decode($resp, true);
-            if (!is_array($data) || !isset($data['result'][0]) || !is_array($data['result'][0])) {
-                $error = 'Neočekávaná odpověď z Quantum API.';
-            } else {
-                $idxes = $data['result'][0];
-
-                if (count($idxes) < count($deck)) {
-                    $error = 'Quantum API vrátilo méně indexů, než je karet v balíčku.';
-                } else {
-                    // Vygenerujeme zamíchaný balíček
-                    $shuffled = [];
-                    foreach ($idxes as $i) {
-                        if (!array_key_exists($i, $deck)) {
-                            // pokud přijde index mimo rozsah, přeskočíme
-                            continue;
-                        }
-                        $shuffled[] = $deck[$i];
-                    }
-
-                    if (count($shuffled) < $needed) {
-                        $error = 'V zamíchaném balíčku není dost karet pro rozdání.';
-                    } else {
-                        // rozdání karet
-                        $players = [];
-                        $pos = 0;
-                        for ($p = 0; $p < $playerCount; $p++) {
-                            $players[$p] = array_slice($shuffled, $pos, CARDS_PER_PLAYER);
-                            $pos += CARDS_PER_PLAYER;
-                        }
-
-                        // jedna karta na stůl
-                        $startCard = $shuffled[$pos] ?? null;
-                        $pos++;
-
-                        // zbytek talon
-                        $talon = array_slice($shuffled, $pos);
-
-                        if ($startCard === null) {
-                            $error = 'Nepodařilo se získat startovní kartu ze zamíchaného balíčku.';
-                        } else {
-                            $result = [
-                                'players'    => $players,
-                                'start_card' => $startCard,
-                                'talon'      => $talon,
-                                'idxes'      => $idxes,
-                            ];
-                            $info[] = 'Balíček úspěšně zamíchán přes Quantum API.';
-                        }
-                    }
-                }
-            }
-        }
+    // sejmi vrchní kartu
+    if (isset($_POST['draw_card'])) {
+        $deck = cards32_get_deck($cards32);
+        $lastDrawnCard = cards32_draw_card($deck);
     }
 }
+
+// po případném draw/shuffle znovu načteme aktuální stav
+$deck      = cards32_get_deck($cards32);
+$pos       = cards32_get_pos();
+$total     = count($deck);
+$remaining = max(0, $total - $pos);
+
+// karty, které už byly sejmuty (pro log)
+$drawnCards = array_slice($deck, 0, $pos);
 ?>
 
 <main class="page page-dnd">
     <section class="dnd-layout">
         <div class="dnd-column">
-            <h1>32 karet – prší demo</h1>
-            <p>
-                Jednoduché prší pro 2–4 hráče.<br>
-                Balíček 32 karet (7–A ve 4 barvách) se zamíchá pomocí Quantum Random API
-                a karty se rozdají z vršku balíčku.
-            </p>
+            <h1>32 karet – balíček</h1>
+            <p>Jednou zamícháš, pak postupně sejmíváš vrchní kartu, dokud se balík nedobere.</p>
 
-            <form method="post" class="card" style="margin-top: 1rem;">
-                <h2>Nastavení rozdání</h2>
+            <div class="card">
+                <h2>Nastavení balíčku</h2>
 
-                <label>
-                    Počet hráčů (2–4):<br>
-                    <input type="number"
-                           name="players"
-                           min="2"
-                           max="4"
-                           value="<?= htmlspecialchars((string)$playerCount) ?>"
-                           style="margin-top: 0.25rem; padding: 0.25rem 0.5rem;">
-                </label>
+                <form method="post">
+                    <p>
+                        <strong>Balíček:</strong> 32 listových karet (7–A, 4 barvy)<br>
+                        <strong>Zbývá v balíčku:</strong> <?= (int)$remaining ?> karet
+                    </p>
 
-                <p style="margin-top: 0.75rem;">
-                    Každý hráč dostane <?= CARDS_PER_PLAYER ?> karty, jedna karta půjde na stůl,
-                    zbytek tvoří talon.
-                </p>
+                    <button type="submit" name="shuffle_deck" class="btn-primary">
+                        Zamíchat nový balíček
+                    </button>
 
-                <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
-                    Zamíchat &amp; rozdat
-                </button>
-            </form>
+                    <button type="submit"
+                            name="draw_card"
+                            class="btn-secondary"
+                            <?= $remaining === 0 ? 'disabled' : '' ?>>
+                        Sejmi vrchní kartu
+                    </button>
 
-            <?php if ($error): ?>
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc2626;">
-                    <h2>Chyba</h2>
-                    <p><?= htmlspecialchars($error) ?></p>
-                </div>
-            <?php endif; ?>
+                    <?php if ($remaining === 0): ?>
+                        <p style="margin-top:0.75rem; color:#ff9f9f;">
+                            Balík je dobraný. Zamíchej nový balík, pokud chceš pokračovat.
+                        </p>
+                    <?php endif; ?>
+                </form>
 
-            <?php if ($info): ?>
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #16a34a;">
-                    <h2>Info</h2>
-                    <ul>
-                        <?php foreach ($info as $msg): ?>
-                            <li><?= htmlspecialchars($msg) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
+                <?php if ($lastDrawnCard !== null): ?>
+                    <p style="margin-top:1rem;">
+                        Poslední sejmutá karta: <strong><?= htmlspecialchars($lastDrawnCard) ?></strong>
+                    </p>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="dnd-column">
-            <?php if ($result): ?>
-                <div class="card">
-                    <h2>Rozdané karty</h2>
+            <h2>Historie sejmutých karet</h2>
 
-                    <?php foreach ($result['players'] as $i => $cards): ?>
-                        <h3>Hráč <?= $i + 1 ?></h3>
-                        <p><?= htmlspecialchars(implode(' · ', $cards)) ?></p>
-                    <?php endforeach; ?>
+            <div class="card">
+                <?php if (empty($drawnCards)): ?>
+                    <p>Zatím nebyla sejmutá žádná karta.</p>
+                <?php else: ?>
+                    <table class="tombola-table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Karta</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($drawnCards as $i => $card): ?>
+                            <tr>
+                                <td><?= $i + 1 ?></td>
+                                <td><?= htmlspecialchars($card) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
 
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #374151;">
-
-                    <p>
-                        <strong>Startovní karta na stole:</strong>
-                        <?= htmlspecialchars($result['start_card']) ?>
-                    </p>
-                    <p>
-                        <strong>Počet karet v talonu:</strong>
-                        <?= count($result['talon']) ?>
-                    </p>
-                </div>
-
-                <div class="card" style="margin-top: 1rem;">
-                    <h2>Debug – permutace z Quantum API</h2>
-                    <p style="font-size: 0.85rem;">
-                        Toto je pořadí indexů (0–31), které vrátilo Quantum API
-                        jako zamíchaný balíček:
-                    </p>
-                    <pre style="font-size: 0.8rem; white-space: pre-wrap;">
-<?= htmlspecialchars(json_encode($result['idxes'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?>
-                    </pre>
-                </div>
-            <?php else: ?>
-                <div class="card">
-                    <h2>Čekám na rozdání</h2>
-                    <p>
-                        Zvol počet hráčů vlevo a klikni na
-                        <strong>„Zamíchat &amp; rozdat“</strong>.
-                    </p>
-                </div>
-            <?php endif; ?>
+            <details style="margin-top:1.5rem;">
+                <summary>Nápověda &amp; info</summary>
+                <p>
+                    Balíček se zamíchá jednou (pomocí Quantum RNG) a pak se z něj postupně sejímá karta
+                    po kartě, dokud nedojdou všechny. Hodí se pro RPG systémy používající karty místo kostek
+                    nebo jako „deck RNG“ pro různé experimenty.
+                </p>
+            </details>
         </div>
     </section>
 </main>

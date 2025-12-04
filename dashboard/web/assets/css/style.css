@@ -893,21 +893,25 @@ footer {
 }
 
 .cards-grid-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0.2rem 0;
 }
 
+/* číslo – menší, decentní */
 .cards-grid-index {
-    opacity: 0.7;
-    margin-right: 0.5rem;
+    font-size: 0.75rem;       /* menší než běžný text */
+    color: #9ca3af;           /* světle šedá */
+    opacity: 0.8;
 }
 
+/* karta – větší, výrazná */
 .cards-grid-value {
-    font-weight: 500;
+    font-size: 1.35rem;       /* větší než běžný text */
+    font-weight: 600;
+    color: #f9fafb;           /* skoro bílá */
 }
-
 /* Na mobilu raději 2 sloupce */
 @media (max-width: 768px) {
     .cards-grid {
@@ -919,6 +923,51 @@ footer {
 .btn-primary[disabled],
 .btn-secondary[disabled] {
     opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Obecné tlačítko – sekundární styl (modrofialový) */
+button.btn-secondary,
+input[type="submit"].btn-secondary,
+a.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 1.3rem;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6); /* modrá → fialová */
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(56, 189, 248, 0.35);
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        opacity 0.12s ease,
+        background 0.12s ease;
+}
+
+button.btn-secondary:hover:not(:disabled),
+input[type="submit"].btn-secondary:hover:not(:disabled),
+a.btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 32px rgba(56, 189, 248, 0.45);
+    opacity: 0.97;
+}
+
+button.btn-secondary:active:not(:disabled),
+input[type="submit"].btn-secondary:active:not(:disabled),
+a.btn-secondary:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35);
+}
+
+button.btn-secondary:disabled,
+input[type="submit"].btn-secondary:disabled {
+    opacity: 0.45;
     cursor: not-allowed;
     box-shadow: none;
 }

@@ -130,9 +130,9 @@ $drawnCards = array_slice($deck, 0, $pos);
 
                     <button type="submit"
                             name="draw_card"
-                            class="btn-secondary"
-                            <?= $remaining === 0 ? 'disabled' : '' ?>>
-                        Sejmi vrchní kartu
+                            class="btn btn-secondary"
+                            <?= $canDraw ? '' : 'disabled' ?>>
+                        Sejmi kartu
                     </button>
 
                     <?php if (!$canShuffle && $remaining > 0): ?>

@@ -5,8 +5,8 @@ session_start();
 
 include __DIR__ . '/includes/header.php';
 
-// --- definice 52 karet (klasické poker/kasíno) ---
-$cards52 = [
+// --- definice 52 karet (klasické pokerové karty) ---
+$cardsBase52 = [
     '2♣','3♣','4♣','5♣','6♣','7♣','8♣','9♣','10♣','J♣','Q♣','K♣','A♣',
     '2♦','3♦','4♦','5♦','6♦','7♦','8♦','9♦','10♦','J♦','Q♦','K♦','A♦',
     '2♥','3♥','4♥','5♥','6♥','7♥','8♥','9♥','10♥','J♥','Q♥','K♥','A♥',
@@ -14,45 +14,61 @@ $cards52 = [
 ];
 
 /**
- * Inicializace nového balíčku do session.
+ * Přidá žolíky podle volby uživatele
  */
-function cards52_init_deck(array $cards52): void
+function cards52_add_jokers(array $deck, int $jokerCount): array
 {
-    $deck = $cards52;
-    shuffle($deck);
-
-    $_SESSION['cards52_deck'] = $deck;
-    $_SESSION['cards52_pos']  = 0;
+    if ($jokerCount === 1) {
+        $deck[] = 'Joker★';
+    } elseif ($jokerCount === 2) {
+        $deck[] = 'Joker♥';
+        $deck[] = 'Joker♠';
+    }
+    return $deck;
 }
 
 /**
- * Vrátí aktuální balíček nebo jej inicializuje.
+ * Inicializace nového balíčku
  */
-function cards52_get_deck(array $cards52): array
+function cards52_init_deck(array $cardsBase52, int $jokerCount = 0): void
 {
+    $deck = cards52_add_jokers($cardsBase52, $jokerCount);
+    shuffle($deck);
+
+    $_SESSION['cards52_deck']   = $deck;
+    $_SESSION['cards52_pos']    = 0;
+    $_SESSION['cards52_jokers'] = $jokerCount;
+}
+
+/**
+ * Získá balík z session, jinak vytvoří nový
+ */
+function cards52_get_deck(array $cardsBase52): array
+{
+    $jokerCount = $_SESSION['cards52_jokers'] ?? 0;
+
     if (!isset($_SESSION['cards52_deck'], $_SESSION['cards52_pos'])) {
-        cards52_init_deck($cards52);
+        cards52_init_deck($cardsBase52, $jokerCount);
     }
+
     return $_SESSION['cards52_deck'];
 }
 
 /**
- * Vrátí počet sejmutých karet.
+ * Počet sejmutých karet
  */
 function cards52_get_pos(): int
 {
-    return isset($_SESSION['cards52_pos']) ? (int)$_SESSION['cards52_pos'] : 0;
+    return $_SESSION['cards52_pos'] ?? 0;
 }
 
 /**
- * Sejmi vrchní kartu.
+ * Sejímání vrchní karty
  */
 function cards52_draw_card(array $deck): ?string
 {
-    $pos   = cards52_get_pos();
-    $count = count($deck);
-
-    if ($pos >= $count) {
+    $pos = cards52_get_pos();
+    if ($pos >= count($deck)) {
         return null;
     }
 
@@ -60,42 +76,47 @@ function cards52_draw_card(array $deck): ?string
     return $deck[$pos];
 }
 
-// --- výpočet stavu před akcí ---
-$deck      = cards52_get_deck($cards52);
-$pos       = cards52_get_pos();
-$total     = count($deck);
-$remaining = max(0, $total - $pos);
+
+// === Výchozí stav ===
+
+$deck       = cards52_get_deck($cardsBase52);
+$pos        = cards52_get_pos();
+$total      = count($deck);
+$remaining  = max(0, $total - $pos);
 
 $canShuffle = ($pos === 0 || $remaining === 0);
 $canDraw    = ($remaining > 0);
 
-$drawnCards = array_slice($deck, 0, $pos);
-
 $lastDrawnCard = null;
 
-// --- POST akce ---
+
+// === POST akce ===
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // nové zamíchání — jen pokud je povoleno
+    // zamíchání balíčku
     if (isset($_POST['shuffle_deck']) && $canShuffle) {
-        cards52_init_deck($cards52);
+        $jokerCount = isset($_POST['jokers']) ? (int)$_POST['jokers'] : 0;
+        cards52_init_deck($cardsBase52, $jokerCount);
     }
 
-    // sejmi vrchní kartu
-    if (isset($_POST['draw_card']) && $remaining > 0) {
-        $deck = cards52_get_deck($cards52);
+    // sejmutí vrchní karty
+    if (isset($_POST['draw_card']) && $canDraw) {
+        $deck          = cards52_get_deck($cardsBase52);
         $lastDrawnCard = cards52_draw_card($deck);
     }
 
-    // přepočítání po akci
-    $deck       = cards52_get_deck($cards52);
+    // přepočítání
+    $deck       = cards52_get_deck($cardsBase52);
     $pos        = cards52_get_pos();
+    $total      = count($deck);
     $remaining  = max(0, $total - $pos);
     $canShuffle = ($pos === 0 || $remaining === 0);
     $canDraw    = ($remaining > 0);
 }
 
-$drawnCards = array_slice($deck, 0, cards52_get_pos());
+$drawnCards = array_slice($deck, 0, $pos);
+
 ?>
 
 <main class="page page-dnd">
@@ -104,32 +125,35 @@ $drawnCards = array_slice($deck, 0, cards52_get_pos());
         <!-- LEVÁ STRANA -->
         <div class="dnd-column">
             <h1>52 karet – balíček</h1>
-            <p>Míchání klasického 52karetního balíčku a postupné sejímání karet.</p>
+            <p>Míchání 52karetního balíčku (s volbou žolíků) a postupné sejímání karet.</p>
 
             <div class="card">
                 <h2>Nastavení</h2>
 
                 <form method="post">
-                    <p>
-                        <strong>Balíček:</strong> 52 karet (2–A ve 4 barvách)<br>
-                        <strong>Zbývá:</strong> <?= $remaining ?> karet
-                    </p>
+                    <p><strong>Balíček:</strong> <?= $total ?> karet</p>
+                    <p><strong>Zbývá:</strong> <?= $remaining ?> karet</p>
+
+                    <!-- Volba žolíků -->
+                    <label><input type="radio" name="jokers" value="0" <?= (!isset($_SESSION['cards52_jokers']) || $_SESSION['cards52_jokers'] == 0) ? 'checked' : '' ?>> Bez žolíků</label><br>
+                    <label><input type="radio" name="jokers" value="1" <?= (isset($_SESSION['cards52_jokers']) && $_SESSION['cards52_jokers'] == 1) ? 'checked' : '' ?>> 1 žolík</label><br>
+                    <label><input type="radio" name="jokers" value="2" <?= (isset($_SESSION['cards52_jokers']) && $_SESSION['cards52_jokers'] == 2) ? 'checked' : '' ?>> 2 žolíci</label><br><br>
 
                     <button type="submit"
                             name="shuffle_deck"
                             class="btn-primary"
-                            <?= $canShuffle ? '' : 'disabled' ?>>
+                        <?= $canShuffle ? '' : 'disabled' ?>>
                         Zamíchat balíček
                     </button>
 
                     <button type="submit"
                             name="draw_card"
                             class="btn btn-secondary"
-                            <?= $canDraw ? '' : 'disabled' ?>>
+                        <?= $canDraw ? '' : 'disabled' ?>>
                         Sejmi vrchní kartu
                     </button>
 
-                    <?php if (!$canShuffle && $remaining > 0): ?>
+                    <?php if (!$canShuffle): ?>
                         <p style="margin-top:0.7rem;color:#ffcf9f;font-size:0.9rem;">
                             Probíhá aktuální balík – zamíchat lze až po dohrání všech karet.
                         </p>
@@ -144,8 +168,7 @@ $drawnCards = array_slice($deck, 0, cards52_get_pos());
 
                 <?php if ($lastDrawnCard): ?>
                     <p style="margin-top:1rem;">
-                        Poslední sejmutá karta:
-                        <strong><?= htmlspecialchars($lastDrawnCard) ?></strong>
+                        Poslední sejmutá karta: <strong><?= htmlspecialchars($lastDrawnCard) ?></strong>
                     </p>
                 <?php endif; ?>
             </div>
@@ -173,13 +196,14 @@ $drawnCards = array_slice($deck, 0, cards52_get_pos());
             <details style="margin-top:1.5rem;">
                 <summary>Nápověda</summary>
                 <p>
-                    Po zamíchání lze kartu sejímat do vyčerpání balíku.
-                    Balík je uchován v session — po dohrání se znovu zamíchá.
+                    Po zamíchání lze sejímat karty do vyčerpání balíku.
+                    Volba žolíků ovlivní celkový počet karet (52 / 53 / 54).
                 </p>
             </details>
-        </div>
 
+        </div>
     </section>
 </main>
 
-<?php include __DIR__ . '/includes/footer.php'; ?>
+<?php
+include __DIR__ . '/includes/footer.php';

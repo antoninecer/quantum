@@ -61,13 +61,13 @@ function cards52_draw_card(array $deck): ?string
 }
 
 // --- výpočet stavu před akcí ---
-$deck       = cards32_get_deck($cards32);
-$pos        = cards32_get_pos();
-$total      = count($deck);
-$remaining  = max(0, $total - $pos);
+$deck      = cards52_get_deck($cards52);
+$pos       = cards52_get_pos();
+$total     = count($deck);
+$remaining = max(0, $total - $pos);
 
 $canShuffle = ($pos === 0 || $remaining === 0);
-$canDraw    = ($remaining > 0);   // ← Tohle tam musí být!
+$canDraw    = ($remaining > 0);
 
 $drawnCards = array_slice($deck, 0, $pos);
 

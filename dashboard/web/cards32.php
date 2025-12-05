@@ -114,7 +114,7 @@ $drawnCards = array_slice($deck, 0, $pos);
     <section class="dnd-layout">
         <div class="dnd-column">
             <h1>32 karet – balíček</h1>
-            <p>Jednou zamícháš, pak postupně sejímáš vrchní kartu, dokud se balík nedobere.</p>
+            <p>Jednou zamícháš, pak postupně snímáš vrchní kartu, dokud se balík nedobere.</p>
 
             <div class="card">
                 <h2>Nastavení balíčku</h2>

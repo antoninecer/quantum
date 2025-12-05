@@ -103,8 +103,12 @@ $deck       = cards32_get_deck($cards32);
 $pos        = cards32_get_pos();
 $total      = count($deck);
 $remaining  = max(0, $total - $pos);
+
 $canShuffle = ($pos === 0 || $remaining === 0);
+$canDraw    = ($remaining > 0);
+
 $drawnCards = array_slice($deck, 0, $pos);
+
 ?>
 <main class="page page-dnd">
     <section class="dnd-layout">

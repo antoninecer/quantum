@@ -32,14 +32,32 @@ function nav_is_active(string $file, string $current): bool {
                class="nav-link<?= nav_is_active('dashboard.php', $current) ? ' active' : '' ?>">
                 Generator
             </a>
-            <a href="/dnd.php"
-               class="nav-link<?= nav_is_active('dnd.php', $current) ? ' active' : '' ?>">
-                DnD dice
-            </a>
-            <a href="/cards32.php"
-               class="nav-link<?= nav_is_active('cards32.php', $current) ? ' active' : '' ?>">
-                DnD 32Cards
-            </a>
+            <div class="nav-dropdown">
+    <a class="nav-link <?= nav_is_active('dnd.php', $current) 
+                        || nav_is_active('cards32.php', $current) 
+                        || nav_is_active('cards52.php', $current) 
+                        ? 'active' : '' ?>">
+        DnD ▼
+    </a>
+
+    <div class="nav-dropdown-menu">
+        <a href="/dnd.php" 
+           class="nav-dropdown-item <?= nav_is_active('dnd.php', $current) ? 'active' : '' ?>">
+            Kostky (dice)
+        </a>
+
+        <a href="/cards32.php" 
+           class="nav-dropdown-item <?= nav_is_active('cards32.php', $current) ? 'active' : '' ?>">
+            32 karet
+        </a>
+
+        <a href="/cards52.php" 
+           class="nav-dropdown-item <?= nav_is_active('cards52.php', $current) ? 'active' : '' ?>">
+            52 karet + žolíci
+        </a>
+    </div>
+</div>
+
             <a href="/about.php"
                class="nav-link<?= nav_is_active('about.php', $current) ? ' active' : '' ?>">
                 About

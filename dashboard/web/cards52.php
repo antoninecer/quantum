@@ -183,4 +183,3 @@ $drawnCards = array_slice($deck, 0, cards52_get_pos());
 </main>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
-:wq

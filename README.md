@@ -375,8 +375,6 @@ data se berou přes join na tombola_events a tombola_prizes.
 Veřejný náhled výsledků
 Každá akce má public_code, který se použije v URL:
 
-text
-Copy code
 https://dashboard.api.ventureout.cz/tombola_tazene.php?code=<public_code>
 Soubor: dashboard/web/tombola_tazene.php
 
@@ -394,13 +392,9 @@ název ceny,
 
 nahoře zobrazuje čas poslední aktualizace a interval auto-refresh:
 
-text
-Copy code
 Aktualizace: 04.12.2025 08:23:09 (auto refresh každých 30 s)
 má jednoduchý JS:
 
-js
-Copy code
 setInterval(function () {
     window.location.reload();
 }, 30000); // 30 s
@@ -417,14 +411,10 @@ Jak funguje API
 Struktura requestu
 Endpoint:
 
-http
-Copy code
 POST https://quantum.api.ventureout.cz/random
 Content-Type: application/json
 Payload:
 
-json
-Copy code
 {
   "request": [
     {
@@ -468,8 +458,6 @@ pro type: "int" null.
 
 Odpověď:
 
-json
-Copy code
 {
   "result": [
     [12, 5, 37, 48, 9]
@@ -479,8 +467,7 @@ result je pole výsledků pro jednotlivé tasky uvnitř requestu – každý tas
 
 Příklady použití
 1) Sportka (6/49)
-json
-Copy code
+
 {
   "request": [
     {
@@ -497,8 +484,7 @@ Copy code
 2) Eurojackpot (5/50 + 2/12)
 Dva tasky v jednom requestu:
 
-json
-Copy code
+
 {
   "request": [
     {
@@ -523,8 +509,6 @@ Copy code
 }
 Odpověď:
 
-json
-Copy code
 {
   "result": [
     [12, 5, 37, 48, 9],
@@ -532,8 +516,7 @@ Copy code
   ]
 }
 3) Heslo (16 znaků)
-json
-Copy code
+
 {
   "request": [
     {
@@ -563,22 +546,18 @@ Lokální vývoj
 Pozn.: Konkrétní cesty a verze se mohou lišit podle prostředí.
 
 API – FastAPI / Uvicorn
-bash
-Copy code
+
 cd api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 Spuštění:
 
-bash
-Copy code
 uvicorn app.main:app --reload --port 8000
 API poběží na http://127.0.0.1:8000.
 
 Dashboard – PHP
-bash
-Copy code
+
 cd dashboard/web
 php -S 127.0.0.1:8080
 Dashboard poběží na http://127.0.0.1:8080/.
@@ -592,8 +571,6 @@ lokálně: http://127.0.0.1:8000.
 Obnovení Python prostředí na jiném stroji
 Příklad pro produkční instalaci v /opt/quantum/api:
 
-bash
-Copy code
 cd /opt/quantum/api
 python3 -m venv venv
 source venv/bin/activate
@@ -624,8 +601,6 @@ Certifikáty spravuje Let’s Encrypt (Certbot).
 Systemd služba quantum-api.service
 Příklad jednotky:
 
-ini
-Copy code
 # /etc/systemd/system/quantum-api.service
 [Unit]
 Description=Quantum Random API
@@ -645,23 +620,15 @@ Aktivace služby:
 
 Načtení nové jednotky:
 
-bash
-Copy code
 systemctl daemon-reload
 Spuštění služby:
 
-bash
-Copy code
 systemctl start quantum-api.service
 Zapnutí po rebootu:
 
-bash
-Copy code
 systemctl enable quantum-api.service
 Kontrola stavu:
 
-bash
-Copy code
 systemctl status quantum-api.service
 Bezpečnost, logování a TODO
 Stav implementace (shrnutí):

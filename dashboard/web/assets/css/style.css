@@ -855,8 +855,8 @@ footer {
 
 /* Admin – správa uživatelů */
 .page-dnd .admin-users {
-    max-width: 1000px;
-    margin: 2rem auto;
+    max-width: 1100px;
+    margin: 2.5rem auto;
 }
 
 .page-dnd .admin-users h1 {
@@ -1063,71 +1063,31 @@ input[type="submit"].btn-secondary:disabled {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
-
 /* ADMIN USERS – tabulka */
 
 .admin-users table {
     width: 100%;
-    table-layout: fixed;
+    border-collapse: collapse;
 }
 
 .admin-users th,
 .admin-users td {
-    padding: 12px 10px;
+    padding: 10px 8px;
     text-align: left;
     vertical-align: middle;
-    word-break: break-word;
 }
 
-.admin-users th,
-.admin-users td {
-    padding: 8px 6px;
-}
-
-/* Akce sloupec */
-.admin-users td.actions {
-    width: 240px;
-}
-
-
-/* Inline form – zarovnaný */
-.admin-users .inline-form {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
-/* Password input */
-.admin-users .inline-form input[type="password"] {
-    width: 110px;
-    padding: 6px 8px;
+.admin-users th {
     font-size: 0.85rem;
-    border-radius: 6px;
+    text-transform: uppercase;
+    opacity: 0.7;
 }
 
-/* Menší tlačítka */
-.admin-users .inline-form button {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    border-radius: 999px;
+.admin-users td {
+    font-size: 0.95rem;
 }
 
-/* Delete button */
-.admin-users .btn-danger {
-    background: #c94a4a;
-    color: white;
-    border: none;
-}
 
-.admin-users .btn-danger:hover {
-    background: #e05d5d;
-}
-
-/* Text poznámky */
-.admin-users .note-muted {
-    font-size: 0.75rem;
-    opacity: 0.6;
-}
 
 /* Formulář v tabulce */
 .admin-users .inline-form {
@@ -1168,62 +1128,3 @@ input[type="submit"].btn-secondary:disabled {
     opacity: 0.6;
 }
 
-/* ===== ADMIN CREATE FORM ===== */
-
-.admin-create-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.admin-create-form .form-row {
-    display: grid;
-    grid-template-columns: 160px 1fr;
-    align-items: center;
-    gap: 1rem;
-}
-
-.admin-create-form label {
-    font-weight: 500;
-    color: #e5e7eb;
-}
-
-.admin-create-form input,
-.admin-create-form select {
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid rgba(148,163,184,0.6);
-    background: #020617;
-    color: #f9fafb;
-}
-
-.admin-create-form .form-submit {
-    margin-top: 0.5rem;
-}
-
-.admin-users .card form {
-    display: grid;
-    grid-template-columns: 160px 1fr;
-    row-gap: 12px;
-    column-gap: 14px;
-    align-items: center;
-}
-
-.admin-users .card form label {
-    margin: 0;
-}
-
-.admin-users .card form button {
-    grid-column: 2;
-    width: fit-content;
-}
-
-.admin-users .tombola-table {
-    table-layout: fixed;
-}
-
-.admin-users .tombola-table th,
-.admin-users .tombola-table td {
-    word-break: break-word;
-}

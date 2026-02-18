@@ -110,31 +110,33 @@ $users = $stmt->fetchAll();
         <div class="alert alert-success"><?= $success ?></div>
     <?php endif; ?>
 
-    <form method="post" class="card">
-        <h2>Nový uživatel</h2>
+<form method="post" class="card admin-create-form">
+    <h2>Nový uživatel</h2>
 
-        <input type="hidden" name="action" value="create">
+    <input type="hidden" name="action" value="create">
 
-        <div class="form-group">
-            <label>Uživatelské jméno</label>
-            <input type="text" name="username" required>
-        </div>
+    <div class="form-row">
+        <label>Uživatelské jméno</label>
+        <input type="text" name="username" required>
+    </div>
 
-        <div class="form-group">
-            <label>Heslo</label>
-            <input type="password" name="password" required>
-        </div>
+    <div class="form-row">
+        <label>Heslo</label>
+        <input type="password" name="password" required>
+    </div>
 
-        <div class="form-group">
-            <label>Role</label>
-            <select name="role">
-                <option value="user">Uživatel</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
+    <div class="form-row">
+        <label>Role</label>
+        <select name="role">
+            <option value="user">Uživatel</option>
+            <option value="admin">Admin</option>
+        </select>
+    </div>
 
+    <div class="form-submit">
         <button type="submit" class="btn-primary">Vytvořit</button>
-    </form>
+    </div>
+</form>
 </div>
 
 <div class="dnd-column">

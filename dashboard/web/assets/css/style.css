@@ -1128,3 +1128,34 @@ input[type="submit"].btn-secondary:disabled {
     opacity: 0.6;
 }
 
+/* === Admin create form – čisté zarovnání === */
+
+.admin-create-form {
+    max-width: 420px;
+}
+
+.admin-create-form .form-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.admin-create-form label {
+    font-size: 0.9rem;
+    color: #e5e7eb;
+}
+
+.admin-create-form input,
+.admin-create-form select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(148,163,184,0.5);
+    background: #020617;
+    color: #f9fafb;
+}
+
+.admin-create-form .form-submit {
+    margin-top: 14px;
+}

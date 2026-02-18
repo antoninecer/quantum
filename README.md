@@ -11,9 +11,9 @@
 - [Architektura](#architektura)
   - [API (`api/`)](#api-api)
   - [Dashboard (`dashboard/`)](#dashboard-dashboard)
-  - [DnD Dice stránka (`dndphp`)](#dnd-dice-stránka-dndphp)
+  - [DnD Dice stránka (`dnd.php`)](#dnd-dice-stránka-dndphp)
   - [Přihlášení a role uživatelů](#přihlášení-a-role-uživatelů)
-  - [Tombola (`tombolaphp`)](#tombola-tombolaphp)
+  - [Tombola (`tombola.php`)](#tombola-tombolaphp)
 - [Jak funguje API](#jak-funguje-api)
   - [Struktura requestu](#struktura-requestu)
   - [Příklady použití](#příklady-použití)
@@ -102,8 +102,14 @@ Dashboard je tenký **PHP layer** nad API. Sám žádná náhodná data negeneru
 - `web/dashboard.php` – UI pro generování náhodných hodnot (Sportka, Eurojackpot, Dice, Password…)
 - `web/dnd.php` – **DnD Dice** stránka (viz níže)
 - `web/tombola.php` – **Tombola** (losování cen pomocí kvantové náhody, viz níže)
+- `web/tombola_manage.php` – správa tomboly
+- `web/tombola_tazene.php` – veřejné zobrazení tažených čísel
 - `web/login.php`, `web/logout.php` – přihlášení / odhlášení
 - `web/admin_users.php` – administrace uživatelů
+- `web/about.php` – stránka o projektu
+- `web/cards32.php`, `web/cards32prsi.php`, `web/cards52.php` – karetní hry
+- `web/phpinfo.php` – informace o PHP
+- `web/pwdhash.php` – nástroj pro hashování hesel
 - `web/includes/header.php`, `web/includes/footer.php` – společné menu / layout
 - `web/includes/auth.php` – práce se session, `current_user()`, `is_admin()`, helpery pro restrikci přístupu
 - `web/includes/tombola_lib.php` – logika kolem tomboly (DB operace, helpery)
@@ -114,7 +120,8 @@ Dashboard je tenký **PHP layer** nad API. Sám žádná náhodná data negeneru
   - skládání JSON payloadu pro `/random`,
   - zobrazení JSON requestu/response + ukázka cURL.
 - `web/assets/js/dnd.js` – JS logika pro DnD kostky (DnD Dice, viz níže)
-- `web/assets/js/tombola.js` – JS helpery pro UI tomboly (pokud/ až budou potřeba)
+- `web/js/loader.js` – JS pro načítání
+- `web/rum/` – adresář s dalšími soubory pro tombolu
 
 ---
 
@@ -264,7 +271,7 @@ při pokusu o přístup na tombola.php je přesměrován na login / dashboard.
 
 Admin má navíc přístup na admin_users.php a může vytvářet nové účty pro obsluhu tomboly.
 
-Tombola (tombola.php)
+### Tombola (`tombola.php`)
 Soubor: dashboard/web/tombola.php
 URL (typicky): https://dashboard.api.ventureout.cz/tombola.php
 

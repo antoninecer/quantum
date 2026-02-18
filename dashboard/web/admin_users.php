@@ -163,7 +163,7 @@ $users = $stmt->fetchAll();
                     <td class="actions">
 
                         <!-- Změna hesla -->
-                        <form method="post" style="margin-bottom:6px;">
+                        <form method="post" class="admin-action-form">
                             <input type="hidden" name="action" value="change_password">
                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
                             <input type="password" name="new_password" placeholder="Nové heslo" required>

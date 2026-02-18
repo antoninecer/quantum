@@ -473,8 +473,9 @@ footer {
     margin: 0 auto;
     display: grid;
     gap: 2rem;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+    grid-template-columns: 1fr 1.2fr;
 }
+
 
 .dnd-panel {
     background: #111827;
@@ -1158,4 +1159,19 @@ input[type="submit"].btn-secondary:disabled {
 
 .admin-create-form .form-submit {
     margin-top: 14px;
+}
+
+.admin-users .card {
+    overflow-x: auto;
+}
+
+.admin-action-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.admin-action-form input[type="password"] {
+    width: 110px;
 }

@@ -1174,3 +1174,36 @@ input[type="submit"].btn-secondary:disabled {
     opacity: 0.6;
 }
 
+/* ===== ADMIN CREATE FORM ===== */
+
+.admin-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.admin-create-form .form-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-create-form label {
+    font-weight: 500;
+    color: #e5e7eb;
+}
+
+.admin-create-form input,
+.admin-create-form select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(148,163,184,0.6);
+    background: #020617;
+    color: #f9fafb;
+}
+
+.admin-create-form .form-submit {
+    margin-top: 0.5rem;
+}

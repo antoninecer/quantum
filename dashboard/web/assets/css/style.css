@@ -1087,10 +1087,7 @@ input[type="submit"].btn-secondary:disabled {
     font-size: 0.95rem;
 }
 
-/* Sloupec akce */
-.admin-users td:last-child {
-    width: 320px;
-}
+
 
 /* Formulář v tabulce */
 .admin-users .inline-form {

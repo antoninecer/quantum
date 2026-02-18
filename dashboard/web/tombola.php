@@ -11,18 +11,24 @@ $user = current_user();
  * Načte akce a ceny pro selecty
  */
 if ($user && is_admin()) {
-    // admin vidí všechny akce
-    $stmt   = $pdo->query('SELECT * FROM tombola_events ORDER BY created_at DESC');
+    // admin vidí vše
+    $stmt = $pdo->query(
+        'SELECT * FROM tombola_events ORDER BY created_at DESC'
+    );
     $events = $stmt->fetchAll();
 } elseif ($user) {
-    // běžný uživatel vidí jen svoje akce
-    $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE user_id = ? ORDER BY created_at DESC');
+    // běžný uživatel jen své AKTIVNÍ akce
+    $stmt = $pdo->prepare(
+        'SELECT * FROM tombola_events
+         WHERE user_id = ? AND status = "active"
+         ORDER BY created_at DESC'
+    );
     $stmt->execute([$user['id']]);
     $events = $stmt->fetchAll();
 } else {
-    // pro jistotu – nepřihlášený nic
     $events = [];
 }
+
 $currentEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 $currentPrizeId = isset($_GET['prize_id']) ? (int)$_GET['prize_id'] : null;
 
@@ -131,6 +137,9 @@ if ($action !== '') {
             $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
             $stmt->execute([$currentEventId]);
             $currentEvent = $stmt->fetch();
+            if ($currentEvent['status'] !== 'active') {
+                $error = 'Tato akce je archivovaná a nelze pro ni losovat.';
+            }
 
             $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ?');
             $stmt->execute([$currentPrizeId]);
@@ -243,15 +252,22 @@ if ($action !== '') {
 
 }
 
-// pokud máme vybranou akci z GET, načti její ceny + poslední los
+    // pokud máme vybranou akci z GET, načti její ceny + poslední los
 if ($currentEventId) {
+
     if ($user && is_admin()) {
         // admin může otevřít jakoukoliv akci
-        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
+        $stmt = $pdo->prepare(
+            'SELECT * FROM tombola_events WHERE id = ?'
+        );
         $stmt->execute([$currentEventId]);
+
     } elseif ($user) {
-        // běžný uživatel jen svoje akce
-        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ? AND user_id = ?');
+        // běžný uživatel jen svou AKTIVNÍ akci
+        $stmt = $pdo->prepare(
+            'SELECT * FROM tombola_events
+             WHERE id = ? AND user_id = ? AND status = "active"'
+        );
         $stmt->execute([$currentEventId, $user['id']]);
     } else {
         $stmt = null;
@@ -259,6 +275,52 @@ if ($currentEventId) {
 
     $currentEvent = $stmt ? $stmt->fetch() : null;
 
+    if ($currentEvent) {
+
+        // ceny
+        $stmt = $pdo->prepare(
+            'SELECT * FROM tombola_prizes
+             WHERE event_id = ?
+             ORDER BY sort_order ASC, id ASC'
+        );
+        $stmt->execute([$currentEventId]);
+        $prizes = $stmt->fetchAll();
+
+        // losy
+        $stmt = $pdo->prepare(
+            'SELECT d.*, p.name AS prize_name
+             FROM tombola_draws d
+             JOIN tombola_prizes p ON p.id = d.prize_id
+             WHERE d.event_id = ?
+             ORDER BY d.created_at DESC'
+        );
+        $stmt->execute([$currentEventId]);
+        $draws = $stmt->fetchAll();
+
+        // vybraná cena
+        if ($currentPrizeId) {
+            foreach ($prizes as $pr) {
+                if ((int)$pr['id'] === $currentPrizeId) {
+                    $currentPrize = $pr;
+                    break;
+                }
+            }
+        }
+
+        // poslední los konkrétní ceny
+        if ($currentPrizeId) {
+            $stmt = $pdo->prepare(
+                'SELECT *
+                 FROM tombola_draws
+                 WHERE prize_id = ?
+                 ORDER BY created_at DESC
+                 LIMIT 1'
+            );
+            $stmt->execute([$currentPrizeId]);
+            $lastDraw = $stmt->fetch();
+        }
+    }
+}
 
     if ($currentEvent) {
         $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE event_id = ? ORDER BY sort_order ASC, id ASC');

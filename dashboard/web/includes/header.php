@@ -68,11 +68,28 @@ function nav_is_active(string $file, string $current): bool {
                 API Docs
             </a>
 
-            <?php if ($user): ?>
-                <a href="/tombola.php"
-                   class="nav-link<?= nav_is_active('tombola.php', $current) ? ' active' : '' ?>">
-                    Tombola
-                </a>
+<?php if ($user): ?>
+<div class="nav-dropdown">
+    <a class="nav-link <?= 
+        nav_is_active('tombola.php', $current) 
+        || nav_is_active('tombola_manage.php', $current)
+        ? 'active' : '' ?>">
+        Tombola ▼
+    </a>
+
+    <div class="nav-dropdown-menu">
+        <a href="/tombola.php"
+           class="nav-dropdown-item <?= nav_is_active('tombola.php', $current) ? 'active' : '' ?>">
+            Losování
+        </a>
+
+        <a href="/tombola_manage.php"
+           class="nav-dropdown-item <?= nav_is_active('tombola_manage.php', $current) ? 'active' : '' ?>">
+            Správa akcí
+        </a>
+    </div>
+</div>
+
                 <?php if (is_admin()): ?>
                     <a href="/admin_users.php"
                        class="nav-link<?= nav_is_active('admin_users.php', $current) ? ' active' : '' ?>">

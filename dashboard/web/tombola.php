@@ -1,33 +1,11 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-require_login(); // nepřihlášený → dashboard.php
+require_login();
 
 include __DIR__ . '/includes/tombola_lib.php';
 include __DIR__ . '/includes/header.php';
 
 $user = current_user();
-
-/**
- * Načte akce a ceny pro selecty
- */
-if ($user && is_admin()) {
-    // admin vidí vše
-    $stmt = $pdo->query(
-        'SELECT * FROM tombola_events ORDER BY created_at DESC'
-    );
-    $events = $stmt->fetchAll();
-} elseif ($user) {
-    // běžný uživatel jen své AKTIVNÍ akce
-    $stmt = $pdo->prepare(
-        'SELECT * FROM tombola_events
-         WHERE user_id = ? AND status = "active"
-         ORDER BY created_at DESC'
-    );
-    $stmt->execute([$user['id']]);
-    $events = $stmt->fetchAll();
-} else {
-    $events = [];
-}
 
 $currentEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 $currentPrizeId = isset($_GET['prize_id']) ? (int)$_GET['prize_id'] : null;
@@ -35,18 +13,61 @@ $currentPrizeId = isset($_GET['prize_id']) ? (int)$_GET['prize_id'] : null;
 $currentEvent = null;
 $currentPrize = null;
 $prizes       = [];
+$draws        = [];
 $lastDraw     = null;
 $message      = null;
 $error        = null;
 
-// Logika – vytvoření akce + cen, losování, opakované losování (POST i GET)
+/**
+ * Načtení akcí do selectu
+ * - admin: všechny
+ * - user: jen svoje aktivní
+ */
+if ($user && is_admin()) {
+    $stmt = $pdo->query('SELECT * FROM tombola_events ORDER BY created_at DESC');
+    $events = $stmt->fetchAll();
+} else {
+    $stmt = $pdo->prepare(
+        'SELECT * FROM tombola_events
+         WHERE user_id = ? AND status = "active"
+         ORDER BY created_at DESC'
+    );
+    $stmt->execute([$user['id']]);
+    $events = $stmt->fetchAll();
+}
+
+/**
+ * Helper: načti event podle práv
+ */
+function load_event_with_acl(PDO $pdo, array $user, int $eventId, bool $requireActiveForUser = true): ?array {
+    if (is_admin()) {
+        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
+        $stmt->execute([$eventId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    $sql = 'SELECT * FROM tombola_events WHERE id = ? AND user_id = ?';
+    if ($requireActiveForUser) {
+        $sql .= ' AND status = "active"';
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$eventId, $user['id']]);
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * Logika – POST/GET akce
+ */
 $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
 $action  = $request['action'] ?? '';
 
 if ($action !== '') {
 
+    /**
+     * 1) CREATE EVENT
+     */
     if ($action === 'create_event') {
-        // vytvoření nové tomboly + cen
+
         $name        = trim($_POST['event_name'] ?? '');
         $ticketFrom  = (int)($_POST['ticket_from'] ?? 1);
         $ticketTo    = (int)($_POST['ticket_to'] ?? 100);
@@ -59,11 +80,10 @@ if ($action !== '') {
         } else {
             $pdo->beginTransaction();
             try {
-                // vlastník akce = aktuálně přihlášený uživatel (nebo NULL, kdyby náhodou)
-                $ownerId = $user['id'] ?? null;
-                // jednoduchý veřejný kód (pozdeji se bude hodit pro public URL)
+                $ownerId    = $user['id'];
                 $publicCode = bin2hex(random_bytes(8));
 
+                // pozor: status nechávám na DB default (ideálně "active")
                 $stmt = $pdo->prepare(
                     'INSERT INTO tombola_events (name, ticket_from, ticket_to, user_id, public_code)
                      VALUES (?, ?, ?, ?, ?)'
@@ -76,51 +96,49 @@ if ($action !== '') {
                 if ($prizeMode === 'count' && $prizeCount > 0) {
                     for ($i = 1; $i <= $prizeCount; $i++) {
                         $prizeRows[] = [
-                            'name'          => 'Cena ' . $i,
-                            'quantity_total'=> 1,
-                            'sort_order'    => $i,
+                            'name'           => 'Cena ' . $i,
+                            'quantity_total' => 1,
+                            'sort_order'     => $i,
                         ];
                     }
                 } elseif ($prizeMode === 'list' && $prizeList !== '') {
                     $lines = preg_split('/\r\n|\r|\n/', $prizeList);
                     $order = 1;
+
                     foreach ($lines as $line) {
                         $line = trim($line);
-                        if ($line === '') {
-                            continue;
-                        }
-                        // jednoduchý formát: "Název|3" => množství 3, jinak 1
-                        $qty  = 1;
+                        if ($line === '') continue;
+
+                        $qty = 1;
                         $nameLine = $line;
+
                         if (strpos($line, '|') !== false) {
                             [$nameLine, $qtyStr] = array_map('trim', explode('|', $line, 2));
                             $qty = max(1, (int)$qtyStr);
                         }
+
                         $prizeRows[] = [
-                            'name'          => $nameLine,
-                            'quantity_total'=> $qty,
-                            'sort_order'    => $order++,
+                            'name'           => $nameLine,
+                            'quantity_total' => $qty,
+                            'sort_order'     => $order++,
                         ];
                     }
                 }
 
                 if ($prizeRows) {
                     $stmtP = $pdo->prepare(
-                        'INSERT INTO tombola_prizes (event_id, name, quantity_total, sort_order) VALUES (?, ?, ?, ?)'
+                        'INSERT INTO tombola_prizes (event_id, name, quantity_total, sort_order)
+                         VALUES (?, ?, ?, ?)'
                     );
                     foreach ($prizeRows as $row) {
-                        $stmtP->execute([
-                            $eventId,
-                            $row['name'],
-                            $row['quantity_total'],
-                            $row['sort_order'],
-                        ]);
+                        $stmtP->execute([$eventId, $row['name'], $row['quantity_total'], $row['sort_order']]);
                     }
                 }
 
                 $pdo->commit();
                 header('Location: tombola.php?event_id=' . $eventId);
                 exit;
+
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $error = 'Chyba při ukládání akce: ' . htmlspecialchars($e->getMessage());
@@ -128,121 +146,134 @@ if ($action !== '') {
         }
     }
 
-    if ($action === 'draw' || $action === 'redraw') {
+    /**
+     * 2) DRAW / REDRAW
+     */
+    if (($action === 'draw' || $action === 'redraw') && !$error) {
+
         $currentEventId = (int)($_POST['event_id'] ?? 0);
         $currentPrizeId = (int)($_POST['prize_id'] ?? 0);
 
-        if ($currentEventId && $currentPrizeId) {
-            // načtení eventu + ceny
-            $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
-            $stmt->execute([$currentEventId]);
-            $currentEvent = $stmt->fetch();
-            if ($currentEvent['status'] !== 'active') {
-                $error = 'Tato akce je archivovaná a nelze pro ni losovat.';
-            }
-
-            $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ?');
-            $stmt->execute([$currentPrizeId]);
-            $currentPrize = $stmt->fetch();
-
-            if (!$currentEvent || !$currentPrize) {
-                $error = 'Vybraná akce nebo cena neexistuje.';
-            } else {
-                // pokud je to "redraw" – poslední platný los pro tuto cenu označíme jako no_show
-                if ($action === 'redraw') {
-                    $stmt = $pdo->prepare(
-                        'SELECT * FROM tombola_draws WHERE prize_id = ? AND status = "valid" ORDER BY created_at DESC LIMIT 1'
-                    );
-                    $stmt->execute([$currentPrizeId]);
-                    $lastValid = $stmt->fetch();
-                    if ($lastValid) {
-                        $stmtU = $pdo->prepare('UPDATE tombola_draws SET status = "no_show" WHERE id = ?');
-                        $stmtU->execute([$lastValid['id']]);
-                    }
-                }
-
-                // kolik už máme platných výherců pro tuto cenu
-                $wins = count_valid_wins($pdo, $currentPrizeId);
-                if ($wins >= (int)$currentPrize['quantity_total']) {
-                    $error = 'Pro tuto cenu už jsou rozdané všechny kusy.';
-                } else {
-                    $ticket = draw_unique_ticket($pdo, $currentEvent, $QUANTUM_API_URL);
-                    if ($ticket === null) {
-                        $error = 'Došly volné lístky v rozsahu akce.';
-                    } else {
-                        $stmt = $pdo->prepare(
-                            'INSERT INTO tombola_draws (event_id, prize_id, ticket_number, status) VALUES (?, ?, ?, "valid")'
-                        );
-                        $stmt->execute([$currentEventId, $currentPrizeId, $ticket]);
-
-                        $lastDraw = [
-                            'ticket_number' => $ticket,
-                            'prize_name'    => $currentPrize['name'],
-                            'event_name'    => $currentEvent['name'],
-                        ];
-
-                        $message = 'Výherní lístek: ' . $ticket;
-                    }
-                }
-            }
-        } else {
+        if (!$currentEventId || !$currentPrizeId) {
             $error = 'Vyber akci a cenu, pro kterou chceš losovat.';
+        } else {
+
+            $currentEvent = load_event_with_acl($pdo, $user, $currentEventId, true);
+
+            if (!$currentEvent) {
+                $error = 'Vybraná akce neexistuje nebo k ní nemáš přístup.';
+            } elseif (!is_admin() && $currentEvent['status'] !== 'active') {
+                // user sem prakticky nikdy nedojde, protože ACL vyžaduje active
+                $error = 'Tato akce je archivovaná.';
+            } elseif (is_admin() && $currentEvent['status'] !== 'active') {
+                $error = 'Tato akce je archivovaná a nelze pro ni losovat.';
+            } else {
+
+                $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ? AND event_id = ?');
+                $stmt->execute([$currentPrizeId, $currentEventId]);
+                $currentPrize = $stmt->fetch();
+
+                if (!$currentPrize) {
+                    $error = 'Vybraná cena neexistuje.';
+                } else {
+
+                    if ($action === 'redraw') {
+                        $stmt = $pdo->prepare(
+                            'SELECT * FROM tombola_draws
+                             WHERE prize_id = ? AND status = "valid"
+                             ORDER BY created_at DESC
+                             LIMIT 1'
+                        );
+                        $stmt->execute([$currentPrizeId]);
+                        $lastValid = $stmt->fetch();
+                        if ($lastValid) {
+                            $stmtU = $pdo->prepare('UPDATE tombola_draws SET status = "no_show" WHERE id = ?');
+                            $stmtU->execute([(int)$lastValid['id']]);
+                        }
+                    }
+
+                    $wins = count_valid_wins($pdo, $currentPrizeId);
+                    if ($wins >= (int)$currentPrize['quantity_total']) {
+                        $error = 'Pro tuto cenu už jsou rozdané všechny kusy.';
+                    } else {
+                        $ticket = draw_unique_ticket($pdo, $currentEvent, $QUANTUM_API_URL);
+                        if ($ticket === null) {
+                            $error = 'Došly volné lístky v rozsahu akce.';
+                        } else {
+                            $stmt = $pdo->prepare(
+                                'INSERT INTO tombola_draws (event_id, prize_id, ticket_number, status)
+                                 VALUES (?, ?, ?, "valid")'
+                            );
+                            $stmt->execute([$currentEventId, $currentPrizeId, $ticket]);
+
+                            $message = 'Výherní lístek: ' . $ticket;
+                        }
+                    }
+                }
+            }
         }
     }
-    if ($action === 'redraw_draw') {
-        $drawId = (int)($request['draw_id'] ?? 0);
 
-        if ($drawId > 0) {
-            // vytáhneme původní los
+    /**
+     * 3) REDRAW konkrétního draw z historie
+     */
+    if ($action === 'redraw_draw' && !$error) {
+
+        $drawId = (int)($request['draw_id'] ?? 0);
+        if ($drawId <= 0) {
+            $error = 'Neplatný los.';
+        } else {
+
             $stmt = $pdo->prepare('SELECT * FROM tombola_draws WHERE id = ?');
             $stmt->execute([$drawId]);
             $draw = $stmt->fetch();
 
-            if ($draw) {
+            if (!$draw) {
+                $error = 'Los nenalezen.';
+            } else {
+
                 $currentEventId = (int)$draw['event_id'];
                 $currentPrizeId = (int)$draw['prize_id'];
 
-                // označíme tenhle los jako "no_show", pokud byl valid
-                if ($draw['status'] === 'valid') {
-                    $stmt = $pdo->prepare('UPDATE tombola_draws SET status = "no_show" WHERE id = ?');
-                    $stmt->execute([$drawId]);
-                }
-
-            // dál už je to stejná logika jako v tvé větvi "redraw":
-            // 1) načíst event a prize
-            $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
-            $stmt->execute([$currentEventId]);
-            $currentEvent = $stmt->fetch();
-
-            $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ? AND event_id = ?');
-            $stmt->execute([$currentPrizeId, $currentEventId]);
-            $currentPrize = $stmt->fetch();
-
-            if ($currentEvent && $currentPrize) {
-                // zkontrolovat, jestli ještě zbývá kusů
-                $wins = count_valid_wins($pdo, $currentPrizeId);
-                if ($wins >= (int)$currentPrize['quantity_total']) {
-                    $error = 'Pro tuto cenu už jsou rozdané všechny kusy.';
+                $currentEvent = load_event_with_acl($pdo, $user, $currentEventId, true);
+                if (!$currentEvent) {
+                    $error = 'Akce neexistuje nebo k ní nemáš přístup.';
+                } elseif (is_admin() && $currentEvent['status'] !== 'active') {
+                    $error = 'Tato akce je archivovaná a nelze pro ni losovat.';
                 } else {
-                    // vylosovat nový lístek
-                    $ticket = draw_unique_ticket($pdo, $currentEvent, $QUANTUM_API_URL);
-                    if ($ticket === null) {
-                        $error = 'Došly volné lístky v rozsahu akce.';
+
+                    // označit původní jako no_show (jen když byl valid)
+                    if ($draw['status'] === 'valid') {
+                        $stmt = $pdo->prepare('UPDATE tombola_draws SET status = "no_show" WHERE id = ?');
+                        $stmt->execute([$drawId]);
+                    }
+
+                    // načíst prize (musí patřit do eventu)
+                    $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE id = ? AND event_id = ?');
+                    $stmt->execute([$currentPrizeId, $currentEventId]);
+                    $currentPrize = $stmt->fetch();
+
+                    if (!$currentPrize) {
+                        $error = 'Cena nenalezena.';
                     } else {
-                        $stmt = $pdo->prepare(
-                            'INSERT INTO tombola_draws (event_id, prize_id, ticket_number, status)
-                             VALUES (?, ?, ?, "valid")'
-                        );
-                        $stmt->execute([$currentEventId, $currentPrizeId, $ticket]);
 
-                        $lastDraw = [
-                            'ticket_number' => $ticket,
-                            'prize_name'    => $currentPrize['name'],
-                            'event_name'    => $currentEvent['name'],
-                            'status'        => 'valid',
-                        ];
+                        $wins = count_valid_wins($pdo, $currentPrizeId);
+                        if ($wins >= (int)$currentPrize['quantity_total']) {
+                            $error = 'Pro tuto cenu už jsou rozdané všechny kusy.';
+                        } else {
+                            $ticket = draw_unique_ticket($pdo, $currentEvent, $QUANTUM_API_URL);
+                            if ($ticket === null) {
+                                $error = 'Došly volné lístky v rozsahu akce.';
+                            } else {
+                                $stmt = $pdo->prepare(
+                                    'INSERT INTO tombola_draws (event_id, prize_id, ticket_number, status)
+                                     VALUES (?, ?, ?, "valid")'
+                                );
+                                $stmt->execute([$currentEventId, $currentPrizeId, $ticket]);
 
-                        $message = 'Přelosování úspěšné, nový lístek: ' . $ticket;
+                                $message = 'Přelosování úspěšné, nový lístek: ' . $ticket;
+                            }
+                        }
                     }
                 }
             }
@@ -250,34 +281,21 @@ if ($action !== '') {
     }
 }
 
-}
-
-    // pokud máme vybranou akci z GET, načti její ceny + poslední los
+/**
+ * Načti aktuální event/prizes/draws podle GET (po akcích i při běžném zobrazení)
+ */
 if ($currentEventId) {
+    $currentEvent = load_event_with_acl($pdo, $user, $currentEventId, true);
 
-    if ($user && is_admin()) {
-        // admin může otevřít jakoukoliv akci
-        $stmt = $pdo->prepare(
-            'SELECT * FROM tombola_events WHERE id = ?'
-        );
+    // admin může otevřít i archived jen pro koukání, ale ne pro losování:
+    if (!$currentEvent && is_admin()) {
+        $stmt = $pdo->prepare('SELECT * FROM tombola_events WHERE id = ?');
         $stmt->execute([$currentEventId]);
-
-    } elseif ($user) {
-        // běžný uživatel jen svou AKTIVNÍ akci
-        $stmt = $pdo->prepare(
-            'SELECT * FROM tombola_events
-             WHERE id = ? AND user_id = ? AND status = "active"'
-        );
-        $stmt->execute([$currentEventId, $user['id']]);
-    } else {
-        $stmt = null;
+        $currentEvent = $stmt->fetch() ?: null;
     }
-
-    $currentEvent = $stmt ? $stmt->fetch() : null;
 
     if ($currentEvent) {
 
-        // ceny
         $stmt = $pdo->prepare(
             'SELECT * FROM tombola_prizes
              WHERE event_id = ?
@@ -286,7 +304,6 @@ if ($currentEventId) {
         $stmt->execute([$currentEventId]);
         $prizes = $stmt->fetchAll();
 
-        // losy
         $stmt = $pdo->prepare(
             'SELECT d.*, p.name AS prize_name
              FROM tombola_draws d
@@ -297,7 +314,6 @@ if ($currentEventId) {
         $stmt->execute([$currentEventId]);
         $draws = $stmt->fetchAll();
 
-        // vybraná cena
         if ($currentPrizeId) {
             foreach ($prizes as $pr) {
                 if ((int)$pr['id'] === $currentPrizeId) {
@@ -307,53 +323,12 @@ if ($currentEventId) {
             }
         }
 
-        // poslední los konkrétní ceny
         if ($currentPrizeId) {
             $stmt = $pdo->prepare(
                 'SELECT *
                  FROM tombola_draws
                  WHERE prize_id = ?
                  ORDER BY created_at DESC
-                 LIMIT 1'
-            );
-            $stmt->execute([$currentPrizeId]);
-            $lastDraw = $stmt->fetch();
-        }
-    }
-}
-
-    if ($currentEvent) {
-        $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE event_id = ? ORDER BY sort_order ASC, id ASC');
-        $stmt->execute([$currentEventId]);
-        $prizes = $stmt->fetchAll();
-        
-        $stmt = $pdo->prepare('SELECT * FROM tombola_prizes WHERE event_id = ? ORDER BY sort_order ASC, id ASC');
-        $stmt->execute([$currentEventId]);
-        $prizes = $stmt->fetchAll();
-
-        $stmt = $pdo->prepare('SELECT d.*, p.name AS prize_name FROM tombola_draws d JOIN tombola_prizes p ON p.id = d.prize_id WHERE d.event_id = ? ORDER BY d.created_at DESC' );
-        $stmt->execute([$currentEventId]);
-        $draws = $stmt->fetchAll();
-        
-        // >>> DOPLNIT – aby fungovala podmínka if ($currentPrize) <<<
-        if ($currentPrizeId) {
-            foreach ($prizes as $pr) {
-                if ((int)$pr['id'] === $currentPrizeId) {
-                    $currentPrize = $pr;
-                    break;
-                }
-            }
-        }
-        // <<< KONEC DOPLNĚNÍ >>>
-
-
-        if ($currentPrizeId) {
-            $stmt = $pdo->prepare(
-                'SELECT d.*, p.name AS prize_name
-                 FROM tombola_draws d
-                 JOIN tombola_prizes p ON p.id = d.prize_id
-                 WHERE d.prize_id = ?
-                 ORDER BY d.created_at DESC
                  LIMIT 1'
             );
             $stmt->execute([$currentPrizeId]);
@@ -410,6 +385,7 @@ if ($currentEventId) {
 
                 <div class="form-group">
                     <label>Definice cen</label>
+
                     <div class="form-row">
                         <div class="form-group">
                             <input type="radio" id="prize_mode_count" name="prize_mode" value="count" checked>
@@ -422,7 +398,8 @@ if ($currentEventId) {
                     <div class="form-group">
                         <input type="radio" id="prize_mode_list" name="prize_mode" value="list">
                         <label for="prize_mode_list">Seznam cen (copy &amp; paste)</label>
-                        <textarea name="prize_list" rows="4" placeholder="Každá cena na nový řádek&#10;Tričko XL|3&#10;Hrnek Quantum|5"></textarea>
+                        <textarea name="prize_list" rows="4"
+                                  placeholder="Každá cena na nový řádek&#10;Tričko XL|3&#10;Hrnek Quantum|5"></textarea>
                         <p class="hint">
                             Formát: Název nebo Název|množství.
                             Např. Tričko XL|3 = 3 kusy stejné ceny.
@@ -435,7 +412,7 @@ if ($currentEventId) {
                 </div>
             </form>
 
-            <?php if ($events): ?>
+            <?php if (!empty($events)): ?>
                 <hr>
                 <h3>Existující akce</h3>
                 <form method="get" class="dnd-form">
@@ -445,8 +422,11 @@ if ($currentEventId) {
                             <option value="">– vyber –</option>
                             <?php foreach ($events as $ev): ?>
                                 <option value="<?= (int)$ev['id'] ?>"
-                                    <?= $currentEventId == $ev['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($ev['name']) ?> (<?= (int)$ev['ticket_from'] ?>–<?= (int)$ev['ticket_to'] ?>)
+                                    <?= $currentEventId == (int)$ev['id'] ? 'selected' : '' ?>
+                                    <?= (is_admin() && ($ev['status'] ?? 'active') !== 'active') ? 'disabled' : '' ?>>
+                                    <?= htmlspecialchars($ev['name']) ?>
+                                    (<?= (int)$ev['ticket_from'] ?>–<?= (int)$ev['ticket_to'] ?>)
+                                    <?= (is_admin() && ($ev['status'] ?? 'active') !== 'active') ? ' – ARCHIV' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -477,10 +457,13 @@ if ($currentEventId) {
                     <div class="result-title">
                         <?= htmlspecialchars($currentEvent['name']) ?>
                         &nbsp; <span>(lístky <?= (int)$currentEvent['ticket_from'] ?>–<?= (int)$currentEvent['ticket_to'] ?>)</span>
+                        <?php if (($currentEvent['status'] ?? 'active') !== 'active'): ?>
+                            &nbsp; <span style="opacity:.8;">(ARCHIV)</span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <?php if ($prizes): ?>
+                <?php if (!empty($prizes)): ?>
                     <form method="get" class="dnd-form">
                         <input type="hidden" name="event_id" value="<?= (int)$currentEvent['id'] ?>">
                         <div class="form-group">
@@ -489,19 +472,18 @@ if ($currentEventId) {
                                 <option value="">– vyber cenu –</option>
                                 <?php foreach ($prizes as $pr): ?>
                                     <?php
-                                    $wins = count_valid_wins($pdo, $pr['id']);
+                                    $wins = count_valid_wins($pdo, (int)$pr['id']);
                                     $left = (int)$pr['quantity_total'] - $wins;
                                     ?>
                                     <option value="<?= (int)$pr['id'] ?>"
-                                        <?= $currentPrizeId == $pr['id'] ? 'selected' : '' ?>>
+                                        <?= $currentPrizeId == (int)$pr['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($pr['name']) ?>
                                         (zbývá <?= max(0, $left) ?>/<?= (int)$pr['quantity_total'] ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <p class="hint">
-                                V závorce vidíš, kolik kusů dané ceny ještě zbývá rozlosovat
-                                (pořádně i když jsi musel přelosovat kvůli „no show“).
+                                V závorce vidíš, kolik kusů dané ceny ještě zbývá rozlosovat.
                             </p>
                         </div>
                     </form>
@@ -516,8 +498,9 @@ if ($currentEventId) {
                         </div>
 
                         <?php
-                        $wins = count_valid_wins($pdo, $currentPrize['id']);
+                        $wins = count_valid_wins($pdo, (int)$currentPrize['id']);
                         $left = (int)$currentPrize['quantity_total'] - $wins;
+                        $isActiveEvent = (($currentEvent['status'] ?? 'active') === 'active');
                         ?>
 
                         <div class="result-total">
@@ -530,19 +513,6 @@ if ($currentEventId) {
                                     <?= (int)$lastDraw['ticket_number'] ?>
                                 </div>
                             </div>
-                            <div class="result-total">
-                                Poslední los:
-                                <strong><?= htmlspecialchars($currentPrize['name']) ?></strong>
-                                – lístek
-                                <strong><?= (int)$lastDraw['ticket_number'] ?></strong>
-                                <?php if ($lastDraw['status'] === 'no_show'): ?>
-                                    <span>(nevyzvednuto)</span>
-                                <?php endif; ?>
-                            </div>
-                        <?php else: ?>
-                            <div class="result-total">
-                                Zatím se pro tuto cenu nelosovalo.
-                            </div>
                         <?php endif; ?>
 
                         <form method="post" class="dnd-form">
@@ -550,34 +520,23 @@ if ($currentEventId) {
                             <input type="hidden" name="prize_id" value="<?= (int)$currentPrize['id'] ?>">
 
                             <div class="form-actions">
-                                <?php if ($left > 0): ?>
+                                <?php if ($isActiveEvent && $left > 0): ?>
                                     <button type="submit" name="action" value="draw" class="btn-primary">
                                         Losovat výherní lístek
                                     </button>
                                 <?php else: ?>
                                     <button type="button" class="btn-primary" disabled>
-                                        Všechny kusy této ceny jsou rozlosované
+                                        Nelze losovat (archiv / vyčerpáno)
                                     </button>
                                 <?php endif; ?>
 
-                                <?php if ($lastDraw && $lastDraw['status'] === 'valid' && $left > 0): ?>
+                                <?php if ($isActiveEvent && $lastDraw && ($lastDraw['status'] ?? '') === 'valid' && $left > 0): ?>
                                     <button type="submit" name="action" value="redraw" class="btn-primary" style="margin-left: .5rem;">
                                         Výherce se neozval – losovat znovu
                                     </button>
                                 <?php endif; ?>
                             </div>
                         </form>
-
-                        <details class="help-details" style="margin-top: 1.5rem;">
-                            <summary>Nápověda k průběhu losování</summary>
-                            <div class="help-text help-text-cs">
-                                <ul>
-                                    <li><strong>Losovat výherní lístek</strong> – vytáhne náhodný lístek z intervalu akce, který ještě nikdy nic nevyhrál.</li>
-                                    <li><strong>Výherce se neozval – losovat znovu</strong> – poslední lístek se označí jako <em>nevyzvednutý</em> a vytáhne se nový. Stejný lístek už nikdy nic nevyhraje.</li>
-                                    <li>Počet zbývajících kusů ceny se počítá jen podle „platných“ výherců, ne podle počtu losování.</li>
-                                </ul>
-                            </div>
-                        </details>
                     <?php endif; ?>
 
                 <?php else: ?>
@@ -589,6 +548,7 @@ if ($currentEventId) {
             <?php endif; ?>
         </div>
     </section>
+
     <section class="tombola-history">
         <h2>Přehled losování vybrané akce</h2>
         <div class="card">
@@ -617,7 +577,7 @@ if ($currentEventId) {
                                 <td><?= htmlspecialchars($d['prize_name']) ?></td>
                                 <td><?= htmlspecialchars($d['status']) ?></td>
                                 <td>
-                                    <?php if ($d['status'] === 'valid'): ?>
+                                    <?php if (($d['status'] ?? '') === 'valid' && (($currentEvent['status'] ?? 'active') === 'active')): ?>
                                         <form method="post" style="display:inline">
                                             <input type="hidden" name="action" value="redraw_draw">
                                             <input type="hidden" name="draw_id" value="<?= (int)$d['id'] ?>">
@@ -641,46 +601,45 @@ if ($currentEventId) {
                 <p>Vyber nejdřív akci nahoře, pak se tady zobrazí přehled losů.</p>
             <?php endif; ?>
         </div>
-       <?php if (!empty($currentEvent['public_code'])): ?>
-        <p style="margin-top:0.5rem;"> Veřejný odkaz na výsledky pro hosty:<br>
 
-        <?php
-        // detekce schematu (http/https)
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        // host včetně portu (pokud je nestandardní)
-        $host = $_SERVER['HTTP_HOST']; // typicky dashboard.api.ventureout.cz
-        // konkrétní cesta
-        $path = '/tombola_tazene.php?code=' . urlencode($currentEvent['public_code']);
-        $url  = $scheme . '://' . $host . $path;
-        ?>
+        <?php if (!empty($currentEvent['public_code'])): ?>
+            <p style="margin-top:0.5rem;">Veřejný odkaz na výsledky pro hosty:<br>
 
-        <a href="<?php echo htmlspecialchars($url, ENT_QUOTES); ?>" target="_blank">
-            <?php echo htmlspecialchars($url); ?>
-        </a>
+            <?php
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'];
+            $path   = '/tombola_tazene.php?code=' . urlencode($currentEvent['public_code']);
+            $url    = $scheme . '://' . $host . $path;
+            ?>
 
-        <div style="margin-top:1rem;">
-            <button
-                type="button"
-                class="btn-secondary"
-                id="show-qr-btn"
-                data-url="<?php echo htmlspecialchars($url, ENT_QUOTES); ?>"
-            >
-                Zobrazit QR kód
-            </button>
+            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES); ?>" target="_blank">
+                <?php echo htmlspecialchars($url); ?>
+            </a>
 
-            <div id="qr-container" style="margin-top:1rem; display:none;">
-                <strong>QR kód pro hosty:</strong><br>
-                <img id="qr-image" src="" alt="QR kód na výsledky tomboly">
+            <div style="margin-top:1rem;">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="show-qr-btn"
+                    data-url="<?php echo htmlspecialchars($url, ENT_QUOTES); ?>"
+                >
+                    Zobrazit QR kód
+                </button>
+
+                <div id="qr-container" style="margin-top:1rem; display:none;">
+                    <strong>QR kód pro hosty:</strong><br>
+                    <img id="qr-image" src="" alt="QR kód na výsledky tomboly">
+                </div>
             </div>
-        </div>
-    </p>
-<?php endif; ?>
+            </p>
+        <?php endif; ?>
 
     </section>
 </main>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    var btn       = document.getElementById('show-qr-btn');
+    var btn = document.getElementById('show-qr-btn');
     if (!btn) return;
 
     var url       = btn.getAttribute('data-url');
@@ -690,14 +649,12 @@ document.addEventListener('DOMContentLoaded', function () {
     btn.addEventListener('click', function () {
         if (!img.getAttribute('src')) {
             var qrApi = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='
-                        + encodeURIComponent(url);
+                + encodeURIComponent(url);
             img.setAttribute('src', qrApi);
         }
         container.style.display = 'block';
     });
 });
 </script>
-<?php
-include __DIR__ . '/includes/footer.php';
-?>
 
+<?php include __DIR__ . '/includes/footer.php'; ?>

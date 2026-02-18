@@ -163,12 +163,14 @@ $users = $stmt->fetchAll();
                     <td class="actions">
 
                         <!-- Změna hesla -->
-                        <form method="post" class="admin-action-form">
-                            <input type="hidden" name="action" value="change_password">
-                            <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                            <input type="password" name="new_password" placeholder="Nové heslo" required>
-                            <button type="submit" class="btn btn-secondary">Změnit</button>
-                        </form>
+                    <td class="actions">
+                    <form method="post" style="margin-bottom:6px;">
+                    <input type="hidden" name="action" value="change_password">
+                    <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
+                    <input type="password" name="new_password" placeholder="Nové heslo" required>
+                    <button type="submit" class="btn btn-secondary">Změnit</button>
+                    </form>
+
 
                         <!-- Smazání -->
                         <?php if ($u['id'] != $currentUser['id']): ?>

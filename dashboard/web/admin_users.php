@@ -158,7 +158,7 @@ $users = $stmt->fetchAll();
                     <td><?= htmlspecialchars($u['username']) ?></td>
                     <td><?= htmlspecialchars($u['role']) ?></td>
                     <td><?= htmlspecialchars($u['created_at']) ?></td>
-                    <td>
+                    <td class="actions">
 
                         <!-- Změna hesla -->
                         <form method="post" style="margin-bottom:6px;">

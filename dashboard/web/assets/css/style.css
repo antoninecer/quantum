@@ -1063,4 +1063,71 @@ input[type="submit"].btn-secondary:disabled {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+/* ADMIN USERS – tabulka */
+
+.admin-users table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-users th,
+.admin-users td {
+    padding: 10px 8px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.admin-users th {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.admin-users td {
+    font-size: 0.95rem;
+}
+
+/* Sloupec akce */
+.admin-users td:last-child {
+    width: 320px;
+}
+
+/* Formulář v tabulce */
+.admin-users .inline-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Malé input pole */
+.admin-users .inline-form input[type="password"] {
+    width: 120px;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+}
+
+/* Tlačítka v tabulce */
+.admin-users .inline-form button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    border-radius: 20px;
+}
+
+/* Delete button */
+.admin-users .btn-danger {
+    background: #c94a4a;
+    color: white;
+    border: none;
+}
+
+.admin-users .btn-danger:hover {
+    background: #e05d5d;
+}
+
+/* Disabled text */
+.admin-users .note-muted {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
 

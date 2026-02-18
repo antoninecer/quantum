@@ -855,8 +855,8 @@ footer {
 
 /* Admin – správa uživatelů */
 .page-dnd .admin-users {
-    max-width: 1100px;
-    margin: 2.5rem auto;
+    max-width: 1000px;
+    margin: 2rem auto;
 }
 
 .page-dnd .admin-users h1 {
@@ -1200,4 +1200,30 @@ input[type="submit"].btn-secondary:disabled {
 
 .admin-create-form .form-submit {
     margin-top: 0.5rem;
+}
+
+.admin-users .card form {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    row-gap: 12px;
+    column-gap: 14px;
+    align-items: center;
+}
+
+.admin-users .card form label {
+    margin: 0;
+}
+
+.admin-users .card form button {
+    grid-column: 2;
+    width: fit-content;
+}
+
+.admin-users .tombola-table {
+    table-layout: fixed;
+}
+
+.admin-users .tombola-table th,
+.admin-users .tombola-table td {
+    word-break: break-word;
 }
